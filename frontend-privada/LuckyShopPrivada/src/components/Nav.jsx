@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaBell } from "react-icons/fa";
 import "./Nav.css";
+import { useNotificaciones } from "../hooks/useNotificaciones";
 
 // URL base de la API backend
 const BASE_URL = import.meta.env.VITE_API_URL + '';
@@ -19,8 +20,11 @@ function iniciales(nombre = '') {
 
 export default function Nav({ openNotifications }) {
   const navigate = useNavigate();
+  const { notificaciones } = useNotificaciones(true);
   // Estado para guardar el nombre del administrador logueado
   const [nombreAdmin, setNombreAdmin] = useState("");
+
+  const tieneNotificaciones = notificaciones.some((n) => n.id !== "exito-total");
 
   // Petición al backend para verificar la sesión activa y obtener los datos del admin
   useEffect(() => {
@@ -51,7 +55,7 @@ export default function Nav({ openNotifications }) {
         >
           <FaBell />
           {/* Indicador visual de notificaciones pendientes */}
-          <span className="notification-dot"></span>
+          {tieneNotificaciones && <span className="notification-dot"></span>}
         </button>
 
         {/* Avatar interactivo con las iniciales que redirige al perfil del admin */}

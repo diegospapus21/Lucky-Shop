@@ -1,8 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
 const BASE_URL = import.meta.env.VITE_API_URL + '';
 const UMBRAL_STOCK_BAJO = 5;
 const HORAS_RETRASO = 48;
+const STORAGE_KEY = "notif-leidas-conteo";
+
+// Lee los conteos leídos desde localStorage
+// Formato: { "ventas-completadas": 4, "videos-aceptados": 2, ... }
+function obtenerConteos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function guardarConteos(conteos) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conteos));
+  } catch { /* ignore */ }
+}
 
 async function obtener(path) {
   const res = await fetch(`${BASE_URL}${path}`, { method: "GET", credentials: "include" });
@@ -13,18 +31,16 @@ async function obtener(path) {
 
 /**
  * Hook de notificaciones del Panel de control.
- * Consulta tres fuentes de datos en paralelo, PERO solo cuando `activo` es true
- * (para no disparar peticiones de fondo en cada página, aunque el modal esté cerrado):
- *  - /api/venta          → pedidos con status: false  = pendientes de despachar
- *  - /api/combosComprados → combos con status: true   = cliente aceptó el video
- *  - /api/productos       → productos con stock ≤ 5   = stock bajo
+ * Al marcar como "leída", guarda cuántos ítems había en ese momento.
+ * La próxima vez, solo muestra la diferencia (los nuevos).
  */
 export function useNotificaciones(activo = true) {
   const [productos, setProductos] = useState([]);
   const [ventas, setVentas] = useState([]);
-  const [combos, setCombos] = useState([]);
+  const [videosCombo, setVideosCombo] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  const [conteosLeidos, setConteosLeidos] = useState(obtenerConteos);
 
   useEffect(() => {
     if (!activo) return;
@@ -32,18 +48,21 @@ export function useNotificaciones(activo = true) {
     let vivo = true;
 
     async function cargar() {
-      setCargando(true);
+      // Solo mostrar spinner en la primera carga
+      if (productos.length === 0 && ventas.length === 0 && videosCombo.length === 0) {
+        setCargando(true);
+      }
       setError(null);
       try {
-        const [dataProductos, dataVentas, dataCombos] = await Promise.all([
+        const [dataProductos, dataVentas, dataVideos] = await Promise.all([
           obtener("/productos"),
           obtener("/venta"),
-          obtener("/combosComprados"),
+          obtener("/videosCombo"),
         ]);
         if (!vivo) return;
         setProductos(dataProductos);
         setVentas(dataVentas);
-        setCombos(dataCombos);
+        setVideosCombo(dataVideos);
       } catch (err) {
         if (vivo) setError(err.message);
       } finally {
@@ -52,89 +71,209 @@ export function useNotificaciones(activo = true) {
     }
 
     cargar();
+
+    // Polling: re-consulta cada 10 segundos para detectar respuestas en tiempo casi real
+    const intervalo = setInterval(cargar, 10000);
+
     return () => {
       vivo = false;
+      clearInterval(intervalo);
     };
   }, [activo]);
+
+  // Marca como leída: guarda el conteo actual para ese tipo
+  const marcarLeida = useCallback((clave, conteoActual) => {
+    setConteosLeidos((prev) => {
+      const nuevos = { ...prev, [clave]: conteoActual };
+      guardarConteos(nuevos);
+      return nuevos;
+    });
+  }, []);
 
   const notificaciones = useMemo(() => {
     const lista = [];
     const ahora = Date.now();
 
-    // ─── 1. VIDEOS ACEPTADOS ───────────────────────────────────────────────────
-    // status: true → el cliente aceptó el video de su combo de la suerte
-    const videosAceptados = combos.filter((c) => c.status === true);
-    if (videosAceptados.length > 0) {
+    // Helper: calcula cuántos son nuevos desde la última lectura
+    const nuevos = (clave, totalActual) => {
+      let leidos = conteosLeidos[clave];
+      if (leidos === undefined || leidos > totalActual) {
+        leidos = 0; // Si no existe o si los leídos superan al total actual (localStorage viejo), resetea a 0
+      }
+      return Math.max(0, totalActual - leidos);
+    };
+
+    // ─── 1. VENTAS COMPLETADAS ─────────────────────────────────────────────
+    const ventasCompletadas = ventas.filter((v) => v.estado === "Completado");
+    const nuevasCompletadas = nuevos("ventas-completadas", ventasCompletadas.length);
+
+    if (nuevasCompletadas > 0) {
       lista.push({
-        id: "videos-aceptados",
+        id: `ventas-completadas-${ventasCompletadas.length}`,
+        tipo: "exito",
+        icono: "",
+        titulo: "¡Venta realizada!",
+        descripcion:
+          nuevasCompletadas === 1
+            ? `Se completó 1 nueva venta.`
+            : `${nuevasCompletadas} nuevas ventas completadas. ¡Buen trabajo!`,
+        enlace: "/ventas",
+        _clave: "ventas-completadas",
+        _conteoActual: ventasCompletadas.length,
+      });
+    }
+
+    // ─── 1b. VENTAS CANCELADAS ──────────────────────────────────────────────
+    const ventasCanceladas = ventas.filter((v) => v.estado === "Cancelado");
+    const nuevasCanceladas = nuevos("ventas-canceladas", ventasCanceladas.length);
+
+    if (nuevasCanceladas > 0) {
+      lista.push({
+        id: `ventas-canceladas-${ventasCanceladas.length}`,
+        tipo: "critico",
+        icono: "",
+        titulo: "Venta cancelada",
+        descripcion:
+          nuevasCanceladas === 1
+            ? `1 nueva venta fue cancelada. Revisa los detalles.`
+            : `${nuevasCanceladas} nuevas ventas fueron canceladas. Revisa los detalles.`,
+        enlace: "/ventas",
+        _clave: "ventas-canceladas",
+        _conteoActual: ventasCanceladas.length,
+      });
+    }
+
+    // ─── 2. VIDEOS ACEPTADOS ───────────────────────────────────────────────────
+    const videosAceptados = videosCombo.filter((c) => c.status === true || c.status === "true");
+    const nuevosAceptados = nuevos("videos-aceptados", videosAceptados.length);
+
+    if (nuevosAceptados > 0) {
+      lista.push({
+        id: `videos-aceptados-${videosAceptados.length}`,
         tipo: "exito",
         icono: "",
         titulo: "¡Video aceptado!",
         descripcion:
-          videosAceptados.length === 1
-            ? "Un cliente aceptó el video de su bolsa de la suerte."
-            : `${videosAceptados.length} clientes aceptaron el video de su bolsa de la suerte.`,
+          nuevosAceptados === 1
+            ? `Un nuevo cliente aceptó el video de su bolsa de la suerte.`
+            : `${nuevosAceptados} nuevos clientes aceptaron el video de su bolsa de la suerte.`,
         enlace: "/videosCombos",
+        _clave: "videos-aceptados",
+        _conteoActual: videosAceptados.length,
       });
     }
 
-    // ─── 2. PEDIDOS PENDIENTES ─────────────────────────────────────────────────
-    // status: false → pedido no despachado aún
-    const pedidosPendientes = ventas.filter((v) => v.status === false);
+    // ─── 3. VIDEOS RECHAZADOS ──────────────────────────────────────────────────
+    const videosRechazados = videosCombo.filter((c) => c.status === false || c.status === "false");
+    const nuevosRechazados = nuevos("videos-rechazados", videosRechazados.length);
 
-    if (pedidosPendientes.length > 0) {
+    if (nuevosRechazados > 0) {
       lista.push({
-        id: "pedidos",
+        id: `videos-rechazados-${videosRechazados.length}`,
+        tipo: "critico",
+        icono: "",
+        titulo: "Video rechazado",
+        descripcion:
+          nuevosRechazados === 1
+            ? `Un nuevo cliente rechazó el video de su bolsa de la suerte. Revisa los detalles.`
+            : `${nuevosRechazados} nuevos clientes rechazaron el video de su bolsa de la suerte. Revisa los detalles.`,
+        enlace: "/videosCombos",
+        _clave: "videos-rechazados",
+        _conteoActual: videosRechazados.length,
+      });
+    }
+
+    // ─── 4. VIDEOS PENDIENTES ──────────────────────────────────────────────────
+    const videosPendientes = videosCombo.filter(
+      (c) => c.status === null || c.status === undefined || c.status === "null" || c.status === "undefined"
+    );
+    const nuevosPendientes = nuevos("videos-pendientes", videosPendientes.length);
+
+    if (nuevosPendientes > 0) {
+      lista.push({
+        id: `videos-pendientes-${videosPendientes.length}`,
+        tipo: "advertencia",
+        icono: "",
+        titulo: "Videos pendientes de respuesta",
+        descripcion:
+          nuevosPendientes === 1
+            ? `1 nuevo video está esperando la respuesta del cliente.`
+            : `${nuevosPendientes} nuevos videos están esperando la respuesta de los clientes.`,
+        enlace: "/videosCombos",
+        _clave: "videos-pendientes",
+        _conteoActual: videosPendientes.length,
+      });
+    }
+
+    // ─── 5. PEDIDOS PENDIENTES ─────────────────────────────────────────────────
+    const pedidosPendientes = ventas.filter((v) => v.estado === "Pendiente");
+    const nuevosPedidos = nuevos("pedidos", pedidosPendientes.length);
+
+    if (nuevosPedidos > 0) {
+      lista.push({
+        id: `pedidos-${pedidosPendientes.length}`,
         tipo: "advertencia",
         icono: "",
         titulo: "Pedidos pendientes",
-        descripcion: `Tienes ${pedidosPendientes.length} pedido${pedidosPendientes.length === 1 ? "" : "s"
-          } pendiente${pedidosPendientes.length === 1 ? "" : "s"
-          } de despachar. ¡Es hora de armar las bolsitas de la suerte!`,
+        descripcion: `Tienes ${nuevosPedidos} nuevo${nuevosPedidos === 1 ? "" : "s"
+          } pedido${nuevosPedidos === 1 ? "" : "s"
+          } pendiente${nuevosPedidos === 1 ? "" : "s"
+          } de despachar.`,
         enlace: "/ventas",
+        _clave: "pedidos",
+        _conteoActual: pedidosPendientes.length,
       });
     }
 
-    // ─── 3. PEDIDO RETRASADO (más de 48 h sin despachar) ──────────────────────
-    const pedidoRetrasado = pedidosPendientes.find(
-      (v) =>
-        v.fecha && ahora - new Date(v.fecha).getTime() > HORAS_RETRASO * 60 * 60 * 1000
+    // ─── 6. PEDIDO RETRASADO (más de 48 h sin despachar) ──────────────────────
+    const pedidosRetrasados = pedidosPendientes.filter(
+      (v) => v.fecha && ahora - new Date(v.fecha).getTime() > HORAS_RETRASO * 60 * 60 * 1000
     );
-    if (pedidoRetrasado) {
-      lista.push({
-        id: "retraso",
-        tipo: "critico",
-        icono: "",
-        titulo: "Pedido con retraso",
-        descripcion: `Un pedido lleva más de ${HORAS_RETRASO} horas sin ser despachado. La experiencia del cliente está en riesgo. Revisa el panel de ventas.`,
-        enlace: "/ventas",
-      });
+    if (pedidosRetrasados.length > 0) {
+      const retrasadosCount = pedidosRetrasados.length;
+      const nuevosRetrasados = nuevos("retraso", retrasadosCount);
+
+      if (nuevosRetrasados > 0) {
+        lista.push({
+          id: `retraso-${retrasadosCount}`,
+          tipo: "critico",
+          icono: "",
+          titulo: "Pedido con retraso",
+          descripcion: `Un pedido lleva más de ${HORAS_RETRASO} horas sin ser despachado. Revisa el panel de ventas.`,
+          enlace: "/ventas",
+          _clave: "retraso",
+          _conteoActual: retrasadosCount,
+        });
+      }
     }
 
-    // ─── 4. STOCK BAJO ────────────────────────────────────────────────────────
+    // ─── 7. STOCK BAJO ────────────────────────────────────────────────────────
     const productosStockBajo = productos.filter(
       (p) => Number(p.stock ?? Infinity) <= UMBRAL_STOCK_BAJO
     );
-    if (productosStockBajo.length > 0) {
-      const primero = productosStockBajo[0];
+    const nuevosStockBajo = nuevos("inventario", productosStockBajo.length);
+
+    if (nuevosStockBajo > 0) {
       lista.push({
-        id: "inventario",
+        id: `inventario-${productosStockBajo.length}`,
         tipo: "advertencia",
         icono: "",
         titulo: "Stock bajo",
         descripcion:
-          productosStockBajo.length === 1
-            ? `El accesorio "${primero.nombre}" está por agotarse. Solo quedan ${primero.stock} unidades.`
-            : `${productosStockBajo.length} accesorios están por agotarse. Revisa el inventario.`,
+          nuevosStockBajo === 1
+            ? `Un nuevo accesorio está por agotarse. Revisa el inventario.`
+            : `${nuevosStockBajo} nuevos accesorios están por agotarse. Revisa el inventario.`,
         enlace: "/productos",
+        _clave: "inventario",
+        _conteoActual: productosStockBajo.length,
       });
     }
 
-    // ─── 5. FELICITACIÓN (todo en orden) ──────────────────────────────────────
+    // ─── 8. FELICITACIÓN (todo en orden) ──────────────────────────────────────
     if (
       !cargando &&
       lista.length === 0 &&
-      (ventas.length > 0 || combos.length > 0)
+      (ventas.length > 0 || videosCombo.length > 0)
     ) {
       lista.push({
         id: "exito-total",
@@ -146,7 +285,7 @@ export function useNotificaciones(activo = true) {
     }
 
     return lista;
-  }, [productos, ventas, combos, cargando]);
+  }, [productos, ventas, videosCombo, cargando, conteosLeidos]);
 
-  return { notificaciones, cargando, error };
+  return { notificaciones, cargando, error, marcarLeida };
 }

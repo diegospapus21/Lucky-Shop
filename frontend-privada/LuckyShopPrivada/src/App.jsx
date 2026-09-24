@@ -13,9 +13,12 @@ import Finanzas from './pages/Finanzas.jsx'
 import VideosCombos from './pages/VideosCombos.jsx'
 import PromocionesAdmin from './pages/Promociones.jsx'
 
+import ToastNotificaciones from './components/ToastNotificaciones.jsx'
+
 function App() {
   return (
     <Router>
+      <ToastNotificaciones />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/recovery-password" element={<RecoveryPasswordAdmin />} />
