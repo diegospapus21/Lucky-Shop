@@ -7,9 +7,21 @@
   position: relative;
 }
 
+/* Sidebar fijo para que permanezca en la misma posición sin desplazarse con el scroll */
+.clientes-wrapper .luckyshop-nav-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: auto;
+  z-index: 200;
+  background: transparent;
+}
+
 /* Área de contenido principal */
 .clientes-content-area {
-  padding:  24px 30px 40px;
+  grid-column: 2;
+  padding: 24px 30px 40px;
   overflow-y: auto;
   min-height: 100vh;
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;

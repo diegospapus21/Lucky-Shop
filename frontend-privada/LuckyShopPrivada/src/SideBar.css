@@ -52,7 +52,7 @@
   flex-direction: column;
   height: calc(100vh - 20px); /* Ocupa casi toda la pantalla verticalmente, sin pasarse */
   margin: 10px;
-  padding: 30px 20px;
+  padding: 16px 16px 20px;
   position: relative;
   width: 270px;
   z-index: 100;
@@ -76,15 +76,15 @@
   align-items: center;
   display: flex;
   justify-content: center;
-  margin-top: 15px;
-  margin-bottom: 25px;
-  padding: 10px 15px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  padding: 4px 15px;
 }
 /* Logo con escalado inteligente para evitar desbordes */
 .logo-img {
   filter: drop-shadow(0 4px 8px rgba(255, 59, 143, 0.2));
   height: auto;
-  max-height: 60px;
+  max-height: 52px;
   max-width: 100%;
   object-fit: contain;
   transition: var(--transition-smooth);
@@ -97,7 +97,7 @@
 .sidebar-divider {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12) 50%, transparent);
   height: 1px;
-  margin: 15px 0 25px 0;
+  margin: 6px 0 10px 0;
   width: 100%;
 }
 
@@ -138,21 +138,26 @@
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Espaciado moderno entre botones */
+  gap: 2px;
   width: 100%;
 }
+
+.sidebar-menu .sidebar-divider {
+  margin: 4px 0 5px 0;
+}
+
 /* Elementos del menú */
 .menu-item {
-  border-radius: 12px;
+  border-radius: 10px;
   position: relative;
   transition: var(--transition-smooth);
 }
 /* Enlaces del menú */
 .menu-link {
   align-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
-  padding: 12px 16px;
+  padding: 6px 12px;
   position: relative;
   transition: var(--transition-smooth);
   width: 100%;
@@ -161,25 +166,26 @@
 .icon-wrapper {
   align-items: center;
   display: flex;
-  height: 24px;
+  height: 26px;
   justify-content: center;
-  margin-right: 14px;
+  margin-right: 12px;
   transition: var(--transition-smooth);
-  width: 24px;
+  width: 26px;
 }
-.icon-wrapper img {
-  height: 22px;
+.icon-wrapper img,
+.icon-wrapper svg {
+  height: 23px;
   object-fit: contain;
-  opacity: 0.75;
+  opacity: 0.8;
   transition: var(--transition-smooth);
-  width: 22px;
+  width: 23px;
 }
 /* Textos de los botones */
 .menu-text {
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   transition: var(--transition-smooth);
 }
 /* --- EFECTOS DE HOVER --- */
