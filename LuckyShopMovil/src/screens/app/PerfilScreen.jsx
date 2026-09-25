@@ -21,12 +21,12 @@ const PerfilScreen = ({ navigation }) => {
   const nombreCompleto = [cliente?.name, cliente?.lastName].filter(Boolean).join(" ") || "Cliente";
   const inicial = (cliente?.name || cliente?.email || "L").charAt(0).toUpperCase();
 
-  // Opciones en tarjetas (según el diseño). Cada una con su icono y destino.
+  // Opciones en tarjetas: cada una con su icono y nombre de pantalla destino.
   const opciones = [
-    { icon: "card-outline", label: "Términos y Condiciones", ruta: null },
-    { icon: "heart-outline", label: "Lista de deseos", ruta: "Inicio" },
-    { icon: "create-outline", label: "Ajustes de cuenta", ruta: null },
-    { icon: "videocam-outline", label: "Videos", ruta: null },
+    { icon: "card-outline",     label: "Términos y Condiciones", ruta: "Terminos"    },
+    { icon: "heart-outline",    label: "Lista de deseos",        ruta: "ListaDeseos" },
+    { icon: "create-outline",   label: "Ajustes de cuenta",      ruta: "Ajustes"     },
+    { icon: "videocam-outline", label: "Videos",                 ruta: "Videos"      },
   ];
 
   return (
