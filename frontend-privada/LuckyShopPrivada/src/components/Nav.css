@@ -77,3 +77,108 @@
   color: #ffffff;
   background: linear-gradient(135deg, #1a3d26, #4a7c5e);
 }
+
+
+
+/* ── Ventana emergente del perfil  ── */
+
+/* Contenedor que ancla el menú al avatar */
+.profile-wrap {
+  position: relative;
+}
+
+/* El avatar de iniciales ahora es clickeable */
+.profile-image-iniciales {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Tarjeta emergente */
+.perfil-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 14px;
+  z-index: 100;
+  animation: perfilMenuIn 0.15s ease;
+}
+
+@keyframes perfilMenuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Encabezado: avatar + datos */
+.perfil-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.perfil-menu-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #0f420b;       /* verde oscuro de la marca */
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.perfil-menu-datos { min-width: 0; }
+
+.perfil-menu-nombre {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: #1c1b1b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.perfil-menu-correo {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.perfil-menu-divider {
+  height: 1px;
+  background: #eef0f2;
+  margin: 8px 0;
+}
+
+/* Botón de cerrar sesión */
+.perfil-menu-logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.perfil-menu-logout:hover {
+  background: #fef2f2;
+}

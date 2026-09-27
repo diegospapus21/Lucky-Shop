@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
 import { FaBell } from "react-icons/fa";
 import "./Nav.css";
 
@@ -18,9 +17,14 @@ function iniciales(nombre = '') {
 }
 
 export default function Nav({ openNotifications }) {
-  const navigate = useNavigate();
-  // Estado para guardar el nombre del administrador logueado
+  // Datos del administrador logueado
   const [nombreAdmin, setNombreAdmin] = useState("");
+  const [correoAdmin, setCorreoAdmin] = useState("");
+
+  // Controla si la ventana emergente del perfil está abierta
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  // Referencia al contenedor del perfil, para cerrar el menú al hacer clic fuera
+  const perfilRef = useRef(null);
 
   // Petición al backend para verificar la sesión activa y obtener los datos del admin
   useEffect(() => {
@@ -32,10 +36,22 @@ export default function Nav({ openNotifications }) {
         const admin = data.admin;
         if (admin) {
           setNombreAdmin(`${admin.name || ""} ${admin.lastName || ""}`.trim());
+          setCorreoAdmin(admin.email || "");
         }
       })
       .catch(() => {});
     return () => { activo = false };
+  }, []);
+
+  // Cierra la ventana emergente cuando se hace clic fuera de ella
+  useEffect(() => {
+    const manejarClicFuera = (e) => {
+      if (perfilRef.current && !perfilRef.current.contains(e.target)) {
+        setMenuAbierto(false);
+      }
+    };
+    document.addEventListener("mousedown", manejarClicFuera);
+    return () => document.removeEventListener("mousedown", manejarClicFuera);
   }, []);
 
   return (
@@ -54,13 +70,28 @@ export default function Nav({ openNotifications }) {
           <span className="notification-dot"></span>
         </button>
 
-        {/* Avatar interactivo con las iniciales que redirige al perfil del admin */}
-        <div
-          className="profile-image profile-image-iniciales"
-          onClick={() => navigate("/perfilAdmin")}
-          title={nombreAdmin || "Administrador"}
-        >
-          {iniciales(nombreAdmin)}
+        {/* Perfil: avatar con iniciales que abre la ventana emergente con la info */}
+        <div className="profile-wrap" ref={perfilRef}>
+          <div
+            className="profile-image profile-image-iniciales"
+            onClick={() => setMenuAbierto((v) => !v)}
+            title={nombreAdmin || "Administrador"}
+          >
+            {iniciales(nombreAdmin)}
+          </div>
+
+          {/* Ventana emergente del perfil */}
+          {menuAbierto && (
+            <div className="perfil-menu">
+              <div className="perfil-menu-header">
+                <div className="perfil-menu-avatar">{iniciales(nombreAdmin)}</div>
+                <div className="perfil-menu-datos">
+                  <p className="perfil-menu-nombre">{nombreAdmin || "Administrador"}</p>
+                  {correoAdmin ? <p className="perfil-menu-correo">{correoAdmin}</p> : null}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </nav>

@@ -1,7 +1,7 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 // Importación de activos gráficos e iconos para la barra de navegación lateral
-import logosite from '../assets/image-removebg-preview.png' 
+import logosite from '../assets/image-removebg-preview.png'
 import HomeIcon from '../assets/icons8-casa-24.png'
 import ventaIcon from '../assets/ventas.png'
 import productoIcon from '../assets/icons8-paquete-50.png'
@@ -10,20 +10,39 @@ import bolsasIcon from '../assets/suerte.png'
 import videosIcon from '../assets/icons8-vídeo-50.png'
 import FinanzasIcon from '../assets/finanza.png'
 
+// URL base de la API backend, para el cierre de sesión
+const BASE_URL = import.meta.env.VITE_API_URL + ''
+
 // Componente Sidebar para la navegación principal del panel administrativo
 const SideBar = () => {
   const location = useLocation()
+  const navigate = useNavigate()
 
   // Evalúa si la ruta actual coincide con la del enlace para aplicar estilos activos
   const isActive = (path) => {
     return location.pathname === path ? 'active' : ''
   }
 
+  // Cierra la sesión en el servidor, limpia el almacenamiento local y redirige al login
+  const cerrarSesion = async () => {
+    try {
+      await fetch(`${BASE_URL}/logout`, { method: 'POST', credentials: 'include' })
+    } catch {
+      // Si la petición falla, igual limpiamos la sesión local
+    } finally {
+      localStorage.removeItem('luckyshop_token')
+      localStorage.removeItem('luckyshop_user')
+      sessionStorage.removeItem('luckyshop_token')
+      sessionStorage.removeItem('luckyshop_user')
+      navigate('/', { replace: true })
+    }
+  }
+
   return (
     <nav className="luckyshop-nav-container">
       {/* Sidebar Principal */}
       <aside className="luckyshop-sidebar">
-        
+
         {/* Identificador visual de la marca / Logo */}
         <div className="logo-container">
           <Link to="/home" className="logo-link">
@@ -120,6 +139,20 @@ const SideBar = () => {
               </div>
               <span className="menu-text">Finanzas</span>
             </Link>
+          </li>
+
+          {/* Botón: Cerrar sesión */}
+          <li className="menu-item">
+            <button type="button" onClick={cerrarSesion} className="menu-link sidebar-logout-btn">
+              <div className="icon-wrapper">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+              </div>
+              <span className="menu-text">Cerrar sesión</span>
+            </button>
           </li>
         </ul>
       </aside>
