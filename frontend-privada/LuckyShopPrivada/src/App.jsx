@@ -8,7 +8,6 @@ import Productos from "./pages/Productos.jsx"
 import Clientes from './pages/Clientes.jsx'
 import Bolsas from './pages/Bolsas.jsx'
 import RecoveryPasswordAdmin from './pages/RecoveryPasswordAdmin.jsx'
-import PerfilAdmin from './pages/PerfilPriv.jsx'
 import Finanzas from './pages/Finanzas.jsx'
 import VideosCombos from './pages/VideosCombos.jsx'
 import PromocionesAdmin from './pages/Promociones.jsx'
@@ -23,14 +22,6 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/recovery-password" element={<RecoveryPasswordAdmin />} />
-        <Route
-          path="/perfilAdmin"
-          element={
-            <ProtectedRoute userType="admin">
-              <PerfilAdmin />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/home"
           element={
