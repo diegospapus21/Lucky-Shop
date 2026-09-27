@@ -412,10 +412,7 @@ const DetallesModal = ({
     return null
   }
 
-  const cantidad =
-    Number(bolsa.cantidadUnidades) === 10
-      ? 10
-      : 6
+  const cantidad = bolsa.cantidadUnidades || 0;
 
   return (
 
@@ -515,43 +512,7 @@ const DetallesModal = ({
             </div>
 
             <div className="pm-detalle-variantes">
-
-              <button
-                className={
-                  `pm-btn pm-btn-variante ${
-                    cantidad === 6
-                      ? 'active'
-                      : ''
-                  }`
-                }
-                onClick={() =>
-                  onSelectVariante(
-                    bolsa,
-                    6
-                  )
-                }
-              >
-                Bolsa de 6
-              </button>
-
-              <button
-                className={
-                  `pm-btn pm-btn-variante ${
-                    cantidad === 10
-                      ? 'active'
-                      : ''
-                  }`
-                }
-                onClick={() =>
-                  onSelectVariante(
-                    bolsa,
-                    10
-                  )
-                }
-              >
-                Bolsa de 10
-              </button>
-
+              {/* Variantes eliminadas porque la cantidad es libre */}
             </div>
 
           </div>
@@ -588,9 +549,7 @@ const FormModal = ({
 }) => {
 
   const cantidadInicial =
-    Number(bolsa?.cantidadUnidades) === 10
-      ? 10
-      : 6
+    bolsa?.cantidadUnidades || 1;
 
   const productosIniciales =
     Array.isArray(bolsa?.productos)
@@ -655,43 +614,26 @@ const FormModal = ({
   // CAMBIAR TAMAÑO
   // ==========================================================
 
-  const handleCantidadUnidades = cantidad => {
-
-    if (
-      cantidad !== 6 &&
-      cantidad !== 10
-    ) {
-      return
+  const handleCantidadUnidades = e => {
+    const value = e.target.value;
+    if (value === '') {
+      setForm(prev => ({ ...prev, cantidadUnidades: '' }));
+      return;
     }
+    const cantidad = Number(value);
+    if (cantidad < 1) return;
 
     setForm(prev => {
-
-      let seleccionados = [
-        ...prev.productosSeleccionados
-      ]
-
-      if (
-        seleccionados.length >
-        cantidad
-      ) {
-
-        seleccionados =
-          seleccionados.slice(
-            0,
-            cantidad
-          )
+      let seleccionados = [...prev.productosSeleccionados];
+      if (seleccionados.length > cantidad) {
+        seleccionados = seleccionados.slice(0, cantidad);
       }
-
       return {
         ...prev,
-
-        cantidadUnidades:
-          cantidad,
-
-        productosSeleccionados:
-          seleccionados
+        cantidadUnidades: cantidad,
+        productosSeleccionados: seleccionados
       }
-    })
+    });
   }
 
   // ==========================================================
@@ -829,18 +771,10 @@ const FormModal = ({
       return
     }
 
-    const cantidad =
-      Number(form.cantidadUnidades)
+    const cantidad = Number(form.cantidadUnidades)
 
-    if (
-      cantidad !== 6 &&
-      cantidad !== 10
-    ) {
-
-      alert(
-        'La bolsa solamente puede ser de 6 o 10 productos.'
-      )
-
+    if (!cantidad || cantidad < 1) {
+      alert('Debes ingresar una cantidad válida mayor a 0.')
       return
     }
 
@@ -1049,54 +983,17 @@ const FormModal = ({
 
             </div>
 
-            {/* TAMAÑO */}
-
             <div className="pm-field-group">
-
-              <label>
-                Tamaño del combo
-              </label>
-
-              <div className="pm-combo-buttons">
-
-                <button
-                  type="button"
-                  className={
-                    `pm-combo-size-btn ${
-                      Number(
-                        form.cantidadUnidades
-                      ) === 6
-                        ? 'active'
-                        : ''
-                    }`
-                  }
-                  onClick={() =>
-                    handleCantidadUnidades(6)
-                  }
-                >
-                  Bolsa de 6
-                </button>
-
-                <button
-                  type="button"
-                  className={
-                    `pm-combo-size-btn ${
-                      Number(
-                        form.cantidadUnidades
-                      ) === 10
-                        ? 'active'
-                        : ''
-                    }`
-                  }
-                  onClick={() =>
-                    handleCantidadUnidades(10)
-                  }
-                >
-                  Bolsa de 10
-                </button>
-
-              </div>
-
+              <label>Cantidad unitaria</label>
+              <input
+                type="number"
+                name="cantidadUnidades"
+                min="1"
+                value={form.cantidadUnidades}
+                onChange={handleCantidadUnidades}
+                className="pm-input"
+                placeholder="Ej. 10"
+              />
             </div>
 
             {/* CONTADOR */}
@@ -1184,88 +1081,16 @@ const FormModal = ({
                           }
                         >
 
-                          {/* =================================
-                              IMAGEN DEL PRODUCTO
-                          ================================= */}
-
-                          <div className="pm-producto-imagen">
-
-                            {imagen ? (
-
-                              <img
-                                src={imagen}
-                                alt={nombre}
-                                onError={e => {
-
-                                  console.error(
-                                    'No se pudo cargar la imagen:',
-                                    imagen
-                                  )
-
-                                  e.currentTarget.style.display =
-                                    'none'
-
-                                  const padre =
-                                    e.currentTarget.parentElement
-
-                                  if (
-                                    padre &&
-                                    !padre.querySelector(
-                                      '.pm-img-error'
-                                    )
-                                  ) {
-
-                                    const texto =
-                                      document.createElement(
-                                        'span'
-                                      )
-
-                                    texto.className =
-                                      'pm-img-error'
-
-                                    texto.innerText =
-                                      'Sin imagen'
-
-                                    padre.appendChild(
-                                      texto
-                                    )
-                                  }
-
-                                }}
-                              />
-
-                            ) : (
-
-                              <span>
-                                Sin imagen
-                              </span>
-
-                            )}
-
-                          </div>
-
                           {/* INFORMACIÓN */}
 
-                          <div className="pm-producto-info">
-
-                            <strong>
-                              {nombre}
-                            </strong>
-
-                            <span>
-                              ${precio}
-                            </span>
-
+                          <div className="pm-producto-info" style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}>
+                            <strong>{nombre}</strong>
                           </div>
 
                           {/* CHECK */}
 
                           <div className="pm-producto-check">
-
-                            {seleccionado
-                              ? '✓'
-                              : ''}
-
+                            {seleccionado ? '✓' : ''}
                           </div>
 
                         </button>
