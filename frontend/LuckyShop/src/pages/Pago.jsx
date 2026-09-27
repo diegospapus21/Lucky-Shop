@@ -1,5 +1,6 @@
 //Pago.jsx -- Pagina donde el cliente puede ver la forma de pago
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -7,6 +8,7 @@ import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const BASE_URL = import.meta.env.VITE_API_URL + ''
+const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID
 
 const Pago = () => {
   const { items, total, clearCart } = useCart()
@@ -30,6 +32,111 @@ const Pago = () => {
 
   const COSTO_ENVIO = items.length > 0 ? 4.00 : 0
   const totalFinal = total + COSTO_ENVIO
+
+  const direccionFinal = direccionEnvio === 'misma' ? editedAddress : nuevaDireccion
+
+  // Registra el carrito y la venta en el backend una vez que el pago fue aprobado.
+  // La usan todos los métodos de pago (tarjeta, efectivo, transacción y PayPal).
+  const registrarPedido = async (metodo, datosExtra = {}) => {
+    // 1. Crear el carrito real en el backend
+    const carritoRes = await fetch(`${BASE_URL}/carrito`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        idCliente: cliente?._id,
+        productos: items.map((i) => ({
+          idProducto: i._id,
+          cantidad: i.cantidad,
+          subtotal: i.precio * i.cantidad,
+        })),
+        total: totalFinal,
+        estado: 'activo',
+      }),
+    })
+    if (!carritoRes.ok) throw new Error('No se pudo registrar el carrito')
+    const carritoCreado = await carritoRes.json()
+
+    // 2. Crear la venta, vinculada al carrito recién creado
+    const ventaRes = await fetch(`${BASE_URL}/venta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        IdCarrito: carritoCreado._id,
+        direcion: direccionFinal,
+        metodoPago: metodo,
+        statusPago: metodo !== 'efectivo',
+        status: true,
+        fecha: new Date(),
+        ...datosExtra,
+      }),
+    })
+    if (!ventaRes.ok) throw new Error('No se pudo registrar la venta')
+
+    clearCart()
+    navigate('/historial')
+  }
+
+  // Los botones de PayPal guardan sus funciones al montarse; con esta ref
+  // siempre leen la versión más reciente del carrito y la dirección.
+  const registrarPedidoRef = useRef(registrarPedido)
+  registrarPedidoRef.current = registrarPedido
+  const datosPayPalRef = useRef({})
+  datosPayPalRef.current = { items, direccionFinal }
+
+  // PayPal paso 1: el backend crea la orden calculando el total con los precios de la BD
+  const crearOrdenPayPal = async () => {
+    setError('')
+    const { items: itemsActuales, direccionFinal: direccion } = datosPayPalRef.current
+    if (!direccion?.trim()) {
+      setError('Ingresa una dirección de envío antes de pagar')
+      throw new Error('Sin dirección')
+    }
+
+    const res = await fetch(`${BASE_URL}/paypal/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        productos: itemsActuales.map((i) => ({ idProducto: i._id, cantidad: i.cantidad })),
+        incluirEnvio: true,
+        plataforma: 'web',
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.message || 'No se pudo iniciar el pago con PayPal')
+      throw new Error(data.message)
+    }
+    return data.id
+  }
+
+  // PayPal paso 2: el cliente aprobó en la ventana de PayPal, ahora cobramos y registramos la venta
+  const aprobarPagoPayPal = async ({ orderID }) => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${BASE_URL}/paypal/capture-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ orderID }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.status !== 'COMPLETED') {
+        throw new Error(data.message || 'PayPal no completó el pago')
+      }
+      await registrarPedidoRef.current('paypal', {
+        idTransaccion: data.captureID,
+        idOrdenPayPal: data.orderID,
+      })
+    } catch (err) {
+      setError(err.message || 'Ocurrió un error al procesar el pago con PayPal')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handlePago = async (e) => {
     e.preventDefault()
@@ -57,49 +164,9 @@ const Pago = () => {
           body: JSON.stringify({ token, formData })
         })
         if (!payRes.ok) throw new Error('Pago declinado por el procesador')
-      } else if (metodoPago === 'paypal') {
-        await new Promise(resolve => setTimeout(resolve, 1500))
       }
 
-      // 1. Crear el carrito real en el backend
-      const carritoRes = await fetch(`${BASE_URL}/carrito`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          idCliente: cliente?._id,
-          productos: items.map((i) => ({
-            idProducto: i._id,
-            cantidad: i.cantidad,
-            subtotal: i.precio * i.cantidad,
-          })),
-          total: totalFinal,
-          estado: 'activo',
-        }),
-      })
-      if (!carritoRes.ok) throw new Error('No se pudo registrar el carrito')
-      const carritoCreado = await carritoRes.json()
-
-      // 2. Crear la venta, vinculada al carrito recién creado
-      const direccionFinal = direccionEnvio === 'misma' ? editedAddress : nuevaDireccion
-
-      const ventaRes = await fetch(`${BASE_URL}/venta`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          IdCarrito: carritoCreado._id,
-          direcion: direccionFinal,
-          metodoPago,
-          statusPago: metodoPago !== 'efectivo',
-          status: true,
-          fecha: new Date(),
-        }),
-      })
-      if (!ventaRes.ok) throw new Error('No se pudo registrar la venta')
-
-      clearCart()
-      navigate('/historial')
+      await registrarPedido(metodoPago)
     } catch (err) {
       setError(err.message || 'Ocurrió un error al procesar el pago')
     } finally {
@@ -123,6 +190,10 @@ const Pago = () => {
   }
 
   return (
+    <PayPalScriptProvider
+      options={{ clientId: PAYPAL_CLIENT_ID || 'test', currency: 'USD', intent: 'capture' }}
+      deferLoading={!PAYPAL_CLIENT_ID}
+    >
     <div className="min-h-screen bg-white">
       <Navbar />
 
@@ -316,13 +387,33 @@ const Pago = () => {
                 </div>
               )}
 
-              <button 
-                onClick={handlePago}
-                disabled={loading}
-                className="w-full bg-[#0a192f] hover:bg-[#112240] text-white py-3.5 rounded-xl font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Procesando...' : `Pagar ahora $${totalFinal.toFixed(2)}`}
-              </button>
+              {metodoPago === 'paypal' ? (
+                PAYPAL_CLIENT_ID ? (
+                  <div className={loading ? 'opacity-60 pointer-events-none' : ''}>
+                    <PayPalButtons
+                      style={{ layout: 'vertical', shape: 'rect', label: 'pay' }}
+                      forceReRender={[totalFinal]}
+                      createOrder={crearOrdenPayPal}
+                      onApprove={aprobarPagoPayPal}
+                      onCancel={() => setError('Cancelaste el pago con PayPal')}
+                      onError={() => setError((prev) => prev || 'Hubo un problema con PayPal, intenta de nuevo')}
+                    />
+                    {loading && <p className="text-center text-sm text-gray-500 mt-2">Procesando pago...</p>}
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 text-yellow-700 text-sm p-3 rounded-lg">
+                    Falta configurar VITE_PAYPAL_CLIENT_ID en el .env
+                  </div>
+                )
+              ) : (
+                <button 
+                  onClick={handlePago}
+                  disabled={loading}
+                  className="w-full bg-[#0a192f] hover:bg-[#112240] text-white py-3.5 rounded-xl font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Procesando...' : `Pagar ahora $${totalFinal.toFixed(2)}`}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -330,6 +421,7 @@ const Pago = () => {
       
       <Footer />
     </div>
+    </PayPalScriptProvider>
   )
 }
 
