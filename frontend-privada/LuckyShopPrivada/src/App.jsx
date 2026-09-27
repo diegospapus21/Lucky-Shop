@@ -12,10 +12,14 @@ import PerfilAdmin from './pages/PerfilPriv.jsx'
 import Finanzas from './pages/Finanzas.jsx'
 import VideosCombos from './pages/VideosCombos.jsx'
 import PromocionesAdmin from './pages/Promociones.jsx'
+import EditarInicio from './pages/EditarInicio.jsx'
+
+import ToastNotificaciones from './components/ToastNotificaciones.jsx'
 
 function App() {
   return (
     <Router>
+      <ToastNotificaciones />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/recovery-password" element={<RecoveryPasswordAdmin />} />
@@ -88,6 +92,14 @@ function App() {
           element={
             <ProtectedRoute userType="admin">
               <Finanzas />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/editarInicio"
+          element={
+            <ProtectedRoute userType="admin">
+              <EditarInicio />
             </ProtectedRoute>
           }
         />

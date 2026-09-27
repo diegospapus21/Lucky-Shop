@@ -83,8 +83,8 @@ const VideoModal = ({ combo, onClose }) => {
   )
 }
 
-/* Modal: detalles + acción de aceptar */
-const DetalleModal = ({ combo, onClose, onAceptar }) => {
+/* Modal: detalles + acciones de aceptar/denegar */
+const DetalleModal = ({ combo, onClose, onAceptar, onDenegar }) => {
   if (!combo) return null
   const { label, clase } = getStatusInfo(combo.status)
 
@@ -122,6 +122,11 @@ const DetalleModal = ({ combo, onClose, onAceptar }) => {
 
         <div className="vc-detalle-actions">
           <button className="vc-btn-cerrar" onClick={onClose}>Cerrar</button>
+          {combo.status !== false && (
+            <button className="vc-btn-denegar" onClick={() => { onDenegar(combo._id); onClose() }}>
+              Denegar
+            </button>
+          )}
           {combo.status !== true && (
             <button className="vc-btn-aceptar" onClick={() => { onAceptar(combo._id); onClose() }}>
               Aceptar
@@ -364,7 +369,7 @@ const VideosCombos = () => {
     await crearCombo(datos)
   }
 
-  const FILTROS = ['Todos', 'Aceptada', 'Denegada']
+  const FILTROS = ['Todos', 'Aceptada', 'Denegada', 'Pendiente']
 
   return (
     <div className="pm-page">
@@ -514,6 +519,7 @@ const VideosCombos = () => {
           combo={modalDetalle}
           onClose={() => setModalDetalle(null)}
           onAceptar={handleAceptar}
+          onDenegar={handleDenegar}
         />
       )}
 

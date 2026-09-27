@@ -5,7 +5,7 @@ import "../NotificationModal.css";
 // Componente modal para desplegar el listado de notificaciones del sistema
 export default function NotificacionesModal({ abierto, onCerrar }) {
   // Hook personalizado para obtener la lista de notificaciones y sus estados
-  const { notificaciones, cargando, error } = useNotificaciones(abierto);
+  const { notificaciones, cargando, error, marcarLeida } = useNotificaciones(abierto);
   const navigate = useNavigate();
 
   // Redirige a la ruta especificada y cierra el modal si existe un enlace
@@ -13,6 +13,14 @@ export default function NotificacionesModal({ abierto, onCerrar }) {
     if (enlace) {
       navigate(enlace);
       onCerrar();
+    }
+  };
+
+  // Marca la notificación como leída guardando el conteo actual
+  const handleLeida = (e, n) => {
+    e.stopPropagation();
+    if (n._clave && n._conteoActual !== undefined) {
+      marcarLeida(n._clave, n._conteoActual);
     }
   };
 
@@ -66,12 +74,23 @@ export default function NotificacionesModal({ abierto, onCerrar }) {
                   <div className="notif-item-contenido">
                     <p className="notif-item-titulo">{n.titulo}</p>
                     <p className="notif-item-descripcion">{n.descripcion}</p>
-                    {/* Indicador visual si la notificación incluye enlace a otra página */}
-                    {n.enlace && (
-                      <span className="notif-ver-mas" style={{ fontSize: "12px", color: "var(--color-primary-pink)", fontWeight: "600", marginTop: "4px", display: "inline-block" }}>
-                        Ver detalles →
-                      </span>
-                    )}
+                    <div className="notif-item-footer">
+                      {/* Indicador visual si la notificación incluye enlace a otra página */}
+                      {n.enlace && (
+                        <span className="notif-ver-mas">
+                          Ver detalles →
+                        </span>
+                      )}
+                      {/* Botón para marcar como leída y eliminarla */}
+                      <button
+                        className="notif-btn-leida"
+                        onClick={(e) => handleLeida(e, n)}
+                        title="Marcar como leída"
+                      >
+                        <IconoCheck />
+                        Leído
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -98,6 +117,24 @@ function IconoX() {
     >
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+// Icono de check para el botón "Leído"
+function IconoCheck() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }

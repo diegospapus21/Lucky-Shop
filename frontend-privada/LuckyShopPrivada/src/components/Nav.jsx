@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaBell } from "react-icons/fa";
 import "./Nav.css";
+import { useNotificaciones } from "../hooks/useNotificaciones";
 
 // URL base de la API backend
 const BASE_URL = import.meta.env.VITE_API_URL + '';
@@ -17,7 +18,13 @@ function iniciales(nombre = '') {
 }
 
 export default function Nav({ openNotifications }) {
+<<<<<<< HEAD
   // Datos del administrador logueado
+=======
+  const navigate = useNavigate();
+  const { notificaciones } = useNotificaciones(true);
+  // Estado para guardar el nombre del administrador logueado
+>>>>>>> 8757c596400fee93de82b00129ddb157e6b679d2
   const [nombreAdmin, setNombreAdmin] = useState("");
   const [correoAdmin, setCorreoAdmin] = useState("");
 
@@ -25,6 +32,8 @@ export default function Nav({ openNotifications }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   // Referencia al contenedor del perfil, para cerrar el menú al hacer clic fuera
   const perfilRef = useRef(null);
+
+  const tieneNotificaciones = notificaciones.some((n) => n.id !== "exito-total");
 
   // Petición al backend para verificar la sesión activa y obtener los datos del admin
   useEffect(() => {
@@ -67,7 +76,7 @@ export default function Nav({ openNotifications }) {
         >
           <FaBell />
           {/* Indicador visual de notificaciones pendientes */}
-          <span className="notification-dot"></span>
+          {tieneNotificaciones && <span className="notification-dot"></span>}
         </button>
 
         {/* Perfil: avatar con iniciales que abre la ventana emergente con la info */}

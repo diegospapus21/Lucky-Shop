@@ -42,6 +42,12 @@ export const endpoints = {
   productos: `${API_BASE_URL}/productos`,
   bolsas: `${API_BASE_URL}/bolsas`,
   perfil: `${API_BASE_URL}/perfilCliente`,
+
+  // Pedidos y pagos
+  carrito: `${API_BASE_URL}/carrito`,
+  venta: `${API_BASE_URL}/venta`,
+  paypalCreateOrder: `${API_BASE_URL}/paypal/create-order`,
+  paypalCaptureOrder: `${API_BASE_URL}/paypal/capture-order`,
 };
 
 export default endpoints;

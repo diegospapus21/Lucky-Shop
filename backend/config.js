@@ -31,6 +31,13 @@ export const config = {
     client_id: process.env.CLIENT_ID,
     client_secret: process.env.CLIENT_SECRET
   },
+  // Credenciales para la pasarela de pagos PayPal
+  paypal: {
+    clientId: process.env.PAYPAL_CLIENT_ID,
+    clientSecret: process.env.PAYPAL_CLIENT_SECRET,
+    // Sandbox para pruebas; en producción: https://api-m.paypal.com
+    apiUrl: process.env.PAYPAL_API_URL || "https://api-m.sandbox.paypal.com",
+  },
   //credenciales de mailjet para envio de correos
     mailjet: {
     apiKey:    process.env.API_KEY_MAILJET,
