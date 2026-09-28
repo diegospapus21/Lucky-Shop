@@ -353,7 +353,7 @@ export default function EditarInicio() {
             </button>
 
             <a
-              href="http://localhost:5173"
+              href="https://lucky-shop-pied.vercel.app"
               target="_blank"
               rel="noreferrer"
               className="btn-ver-tienda"
