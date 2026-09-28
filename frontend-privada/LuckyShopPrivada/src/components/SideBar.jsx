@@ -11,7 +11,7 @@ import videosIcon from '../assets/icons8-vídeo-50.png'
 import FinanzasIcon from '../assets/finanza.png'
 
 // URL base de la API backend, para el cierre de sesión
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 // Componente Sidebar para la navegación principal del panel administrativo
 const SideBar = () => {
@@ -141,9 +141,7 @@ const SideBar = () => {
             </Link>
           </li>
 
-<<<<<<< HEAD
           {/* Botón: Cerrar sesión */}
-          <li className="menu-item">
             <button type="button" onClick={cerrarSesion} className="menu-link sidebar-logout-btn">
               <div className="icon-wrapper">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -154,7 +152,6 @@ const SideBar = () => {
               </div>
               <span className="menu-text">Cerrar sesión</span>
             </button>
-=======
           {/* Módulo: Editar Inicio */}
           <li className={`menu-item ${isActive('/editarInicio')}`}>
             <Link to="/editarInicio" className="menu-link">
@@ -166,7 +163,6 @@ const SideBar = () => {
               </div>
               <span className="menu-text">Editar Inicio</span>
             </Link>
->>>>>>> 8757c596400fee93de82b00129ddb157e6b679d2
           </li>
         </ul>
       </aside>

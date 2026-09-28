@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 
 // URL base de la API backend
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 // Componente modal para el registro de nuevas promociones
 const PromoModal = ({ onClose, onCreated }) => {

@@ -6,7 +6,7 @@ import NotificacionesModal from '../components/NotificationsModal'
 import '../SideBar.css'
 import '../productosPage.css'
 
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const POR_PAGINA = 10
 
 // Da formato corto a una fecha (ej: "15 jul. 2026")

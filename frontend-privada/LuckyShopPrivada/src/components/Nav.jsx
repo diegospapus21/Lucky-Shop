@@ -4,7 +4,7 @@ import "./Nav.css";
 import { useNotificaciones } from "../hooks/useNotificaciones";
 
 // URL base de la API backend
-const BASE_URL = import.meta.env.VITE_API_URL + '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 // Función auxiliar para obtener hasta dos iniciales en mayúsculas a partir del nombre completo
 function iniciales(nombre = '') {
@@ -18,13 +18,9 @@ function iniciales(nombre = '') {
 }
 
 export default function Nav({ openNotifications }) {
-<<<<<<< HEAD
   // Datos del administrador logueado
-=======
-  const navigate = useNavigate();
   const { notificaciones } = useNotificaciones(true);
   // Estado para guardar el nombre del administrador logueado
->>>>>>> 8757c596400fee93de82b00129ddb157e6b679d2
   const [nombreAdmin, setNombreAdmin] = useState("");
   const [correoAdmin, setCorreoAdmin] = useState("");
 

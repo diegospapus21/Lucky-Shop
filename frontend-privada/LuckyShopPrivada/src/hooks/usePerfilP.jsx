@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const BASE_URL = import.meta.env.VITE_API_URL + '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 function normalizarAdmin(admin) {
   return {

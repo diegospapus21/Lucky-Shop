@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import AdminLogo from '../components/AdminLogo.jsx'
 
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const CLOVER_BG = 'https://images.unsplash.com/photo-1748357663177-f93b0d158eda?fm=jpg&q=80&w=1200&auto=format&fit=crop'
 
 const Login = () => {

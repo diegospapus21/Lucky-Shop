@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 
-const BASE_URL = import.meta.env.VITE_API_URL + '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const UMBRAL_STOCK_BAJO = 5;
 const HORAS_RETRASO = 48;
 const STORAGE_KEY = "notif-leidas-conteo";

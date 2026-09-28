@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 
-const BASE_URL = import.meta.env.VITE_API_URL + '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const NOMBRES_MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 async function solicitar(path, { method = "GET", body } = {}) {

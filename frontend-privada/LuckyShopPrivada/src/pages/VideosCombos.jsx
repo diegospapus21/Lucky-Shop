@@ -7,7 +7,7 @@ import '../SideBar.css'
 import '../productosPage.css'
 import '../videosCombosPage.css'
 
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 /* ── Helpers ── */
 const formatFecha = (fecha) => {

@@ -11,7 +11,7 @@ import '../productosPage.css'
 // CONFIGURACIÓN
 // ============================================================
 
-const BASE_URL = 'http://localhost:4000/api'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 const ESTADOS = [
   'activo',

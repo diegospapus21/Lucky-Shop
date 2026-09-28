@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 const ProtectedRoute = ({ userType, children }) => {
   const [status, setStatus] = useState('checking')

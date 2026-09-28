@@ -5,7 +5,7 @@ import AdminLogo from './AdminLogo.jsx'
 import trebolFondo from '../assets/trebol-fondo.png'
 
 // URL base para peticiones a la API
-const BASE_URL = import.meta.env.VITE_API_URL + ''
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 // userType se mantiene por compatibilidad, pero en este proyecto (frontend-privada)
 // este componente solo se usa para userType="admin".
