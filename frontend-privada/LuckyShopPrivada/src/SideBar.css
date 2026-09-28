@@ -9,7 +9,7 @@
   --color-secondary-green: #00e676; /* Verde Trébol / Neón */
   --color-active-bg: rgba(0, 230, 118, 0.08); /* Fondo verde translúcido para activo */
   --color-active-bg-pink: rgba(255, 59, 143, 0.08); /* Fondo rosa translúcido */
-  
+
   --text-primary: #ffffff;
   --text-muted: #83978b;
   --text-hover: #00e676;
@@ -18,10 +18,10 @@
   --border-glow-green: 1px solid rgba(0, 230, 118, 0.2);
   --border-glow-pink: 1px solid rgba(255, 59, 143, 0.25);
   --shadow-premium: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
-  
+
   /* Fuentes */
   --font-family-main: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+
   /* Animaciones */
   --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -140,10 +140,16 @@
   flex-direction: column;
   gap: 2px;
   width: 100%;
+  flex: 1 1 auto; /* Ocupa el alto disponible para poder empujar el último item abajo */
 }
 
 .sidebar-menu .sidebar-divider {
   margin: 4px 0 5px 0;
+}
+
+/* Empuja el último item del menú (Cerrar sesión) hasta el fondo del sidebar */
+.sidebar-menu > li:last-child {
+  margin-top: auto;
 }
 
 /* Elementos del menú */
@@ -162,6 +168,18 @@
   transition: var(--transition-smooth);
   width: 100%;
 }
+
+/* Botón de Cerrar sesión: se ve idéntico a un enlace del menú (mismo estilo blanco) */
+.sidebar-logout-btn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary); /* el icono (currentColor) hereda el blanco */
+}
+
 /* Iconos contenedores */
 .icon-wrapper {
   align-items: center;
@@ -196,7 +214,8 @@
   color: var(--text-primary);
   transform: translateX(4px);
 }
-.menu-item:hover .icon-wrapper img {
+.menu-item:hover .icon-wrapper img,
+.menu-item:hover .icon-wrapper svg {
   opacity: 1;
   transform: scale(1.15);
 }
@@ -336,16 +355,16 @@
     width: 80px;
     padding: 20px 10px;
   }
-  
+
   .logo-container {
     padding: 5px;
   }
-  
+
   .logo-img {
     max-height: 40px;
   }
-  
-  .menu-text, 
+
+  .menu-text,
   .sidebar-divider {
     display: none; /* Oculta textos y divisores para hacer una barra compacta */
   }
@@ -360,7 +379,7 @@
     height: 30px;
     top: calc(50% - 15px);
   }
-  
+
   .header-actions {
     margin-right: 15px;
     margin-top: 15px;

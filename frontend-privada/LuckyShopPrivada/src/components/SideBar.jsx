@@ -141,20 +141,6 @@ const SideBar = () => {
             </Link>
           </li>
 
-<<<<<<< HEAD
-          {/* Botón: Cerrar sesión */}
-          <li className="menu-item">
-            <button type="button" onClick={cerrarSesion} className="menu-link sidebar-logout-btn">
-              <div className="icon-wrapper">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <path d="M16 17l5-5-5-5" />
-                  <path d="M21 12H9" />
-                </svg>
-              </div>
-              <span className="menu-text">Cerrar sesión</span>
-            </button>
-=======
           {/* Módulo: Editar Inicio */}
           <li className={`menu-item ${isActive('/editarInicio')}`}>
             <Link to="/editarInicio" className="menu-link">
@@ -166,7 +152,6 @@ const SideBar = () => {
               </div>
               <span className="menu-text">Editar Inicio</span>
             </Link>
->>>>>>> 8757c596400fee93de82b00129ddb157e6b679d2
           </li>
         </ul>
       </aside>
