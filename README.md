@@ -65,6 +65,6 @@ El proyecto se divide en capas estratégicas para garantizar escalabilidad y un 
 ## Integrantes del Equipo
 * David José Rivera Avelar         #20210008
 * Andrea Michelle Serrano Menjívar #20240349
-* Joshua Alfredo Flores Deleónn    #20240228
+* Joshua Alfredo Flores Deleón    #20240228
 * Brando Alejandro Cubias Fuentes  #20210181
 * Diego Gabriel Hernández Colorado #20230048
