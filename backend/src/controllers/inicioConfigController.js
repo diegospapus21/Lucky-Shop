@@ -45,7 +45,7 @@ async function guardarArchivoRespaldo(data) {
 }
 
 // Helper con timeout para operaciones de Mongoose
-function conTimeout(promesa, ms = 1200) {
+function conTimeout(promesa, ms = 4000) {
   return Promise.race([
     promesa,
     new Promise((_, reject) =>
@@ -59,14 +59,19 @@ inicioConfigController.getInicioConfig = async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       try {
-        let config = await conTimeout(InicioConfig.findOne());
+        let config = await conTimeout(InicioConfig.findOne(), 4000);
         if (!config) {
           const respaldo = await leerArchivoRespaldo();
-          config = await conTimeout(InicioConfig.create(respaldo));
+          config = await conTimeout(InicioConfig.create(respaldo), 4000);
         }
-        return res.status(200).json(config);
+        if (config) {
+          return res.status(200).json({
+            banner: config.banner,
+            bienvenida: config.bienvenida,
+          });
+        }
       } catch (dbErr) {
-        console.warn("MongoDB no respondió rápido, usando respaldo local:", dbErr.message);
+        console.warn("MongoDB lento o error, usando respaldo local:", dbErr.message);
       }
     }
 
@@ -92,8 +97,37 @@ inicioConfigController.updateInicioConfig = async (req, res) => {
       eliminarImagen,
     } = req.body;
 
-    // Obtener estado base (desde archivo local o DB)
-    const datosActuales = await leerArchivoRespaldo();
+    // Obtener estado base (desde Mongo si está listo, o respaldo local)
+    let datosActuales = null;
+    let mongoDoc = null;
+
+    if (mongoose.connection.readyState === 1) {
+      try {
+        mongoDoc = await conTimeout(InicioConfig.findOne(), 4000);
+        if (mongoDoc) {
+          datosActuales = {
+            banner: {
+              linea1: mongoDoc.banner?.linea1,
+              linea2: mongoDoc.banner?.linea2,
+              imagenUrl: mongoDoc.banner?.imagenUrl || "",
+              imagenPublicId: mongoDoc.banner?.imagenPublicId || "",
+              colorTexto: mongoDoc.banner?.colorTexto,
+              colorFondo: mongoDoc.banner?.colorFondo,
+            },
+            bienvenida: {
+              titulo: mongoDoc.bienvenida?.titulo,
+              contenidoHtml: mongoDoc.bienvenida?.contenidoHtml,
+            },
+          };
+        }
+      } catch (e) {
+        console.warn("No se pudo leer Mongo para base:", e.message);
+      }
+    }
+
+    if (!datosActuales) {
+      datosActuales = await leerArchivoRespaldo();
+    }
 
     if (linea1 !== undefined) datosActuales.banner.linea1 = linea1;
     if (linea2 !== undefined) datosActuales.banner.linea2 = linea2;
@@ -118,19 +152,24 @@ inicioConfigController.updateInicioConfig = async (req, res) => {
     // 1. Guardar de forma inmediata en el archivo local persistente
     await guardarArchivoRespaldo(datosActuales);
 
-    // 2. Intentar guardar en MongoDB si está conectado (sin bloquear)
+    // 2. Guardar en MongoDB esperando confirmación (si está conectado)
     if (mongoose.connection.readyState === 1) {
-      InicioConfig.findOne()
-        .then(async (doc) => {
-          if (!doc) {
-            await InicioConfig.create(datosActuales);
-          } else {
-            Object.assign(doc.banner, datosActuales.banner);
-            Object.assign(doc.bienvenida, datosActuales.bienvenida);
-            await doc.save();
-          }
-        })
-        .catch((err) => console.warn("Sync en MongoDB en segundo plano falló:", err.message));
+      try {
+        if (!mongoDoc) {
+          mongoDoc = await conTimeout(InicioConfig.findOne(), 4000);
+        }
+        if (!mongoDoc) {
+          await conTimeout(InicioConfig.create(datosActuales), 5000);
+        } else {
+          mongoDoc.banner = { ...mongoDoc.banner, ...datosActuales.banner };
+          mongoDoc.bienvenida = { ...mongoDoc.bienvenida, ...datosActuales.bienvenida };
+          mongoDoc.markModified("banner");
+          mongoDoc.markModified("bienvenida");
+          await conTimeout(mongoDoc.save(), 5000);
+        }
+      } catch (mongoErr) {
+        console.warn("Error al guardar en MongoDB (respaldo local guardado OK):", mongoErr.message);
+      }
     }
 
     return res.status(200).json({

@@ -28,6 +28,7 @@ import wompiRoutes from "./src/routes/wompi.js"
 import paypalRoutes from "./src/routes/paypal.js";
 import promocionesRoutes from "./src/routes/promociones.js"
 import videosComboRoutes from "./src/routes/videosCombo.js";
+import inicioConfigRoutes from "./src/routes/inicioConfig.js";
 
 // Inicialización de la aplicación Express
 const app = express();
@@ -77,5 +78,6 @@ app.use("/api/wompi", wompiRoutes);
 app.use("/api/paypal", paypalRoutes);
 app.use("/api/promociones", promocionesRoutes);
 app.use("/api/videosCombo", videosComboRoutes );
+app.use("/api/inicioConfig", inicioConfigRoutes);
 
 export default app;
