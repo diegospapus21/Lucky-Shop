@@ -385,3 +385,96 @@
     margin-top: 15px;
   }
 }
+
+/* ── Modal de confirmación de cierre de sesión (agregar al final de SideBar.css) ── */
+
+.logout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: logoutFade 0.15s ease;
+}
+
+@keyframes logoutFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.logout-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: logoutPop 0.18s ease;
+}
+
+@keyframes logoutPop {
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.logout-modal-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.logout-modal-title {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #1c1b1b;
+}
+
+.logout-modal-text {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.logout-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.logout-modal-btn {
+  flex: 1;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.logout-modal-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+.logout-modal-cancel:hover {
+  background: #e5e7eb;
+}
+
+.logout-modal-confirm {
+  background: #dc2626;
+  color: #ffffff;
+}
+.logout-modal-confirm:hover {
+  background: #b91c1c;
+}

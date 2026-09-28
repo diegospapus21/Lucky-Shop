@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { FaBell } from "react-icons/fa";
 import "./Nav.css";
-import { useNotificaciones } from "../hooks/useNotificaciones";
+import { useNavigate } from "react-router-dom";
 
 // URL base de la API backend
 const BASE_URL = import.meta.env.VITE_API_URL + '';
@@ -18,22 +18,12 @@ function iniciales(nombre = '') {
 }
 
 export default function Nav({ openNotifications }) {
-<<<<<<< HEAD
   // Datos del administrador logueado
-=======
-  const navigate = useNavigate();
-  const { notificaciones } = useNotificaciones(true);
-  // Estado para guardar el nombre del administrador logueado
->>>>>>> 8757c596400fee93de82b00129ddb157e6b679d2
   const [nombreAdmin, setNombreAdmin] = useState("");
   const [correoAdmin, setCorreoAdmin] = useState("");
 
-  // Controla si la ventana emergente del perfil está abierta
+  // Controla si la ventana emergente del perfil está visible (se abre al pasar el cursor)
   const [menuAbierto, setMenuAbierto] = useState(false);
-  // Referencia al contenedor del perfil, para cerrar el menú al hacer clic fuera
-  const perfilRef = useRef(null);
-
-  const tieneNotificaciones = notificaciones.some((n) => n.id !== "exito-total");
 
   // Petición al backend para verificar la sesión activa y obtener los datos del admin
   useEffect(() => {
@@ -52,17 +42,6 @@ export default function Nav({ openNotifications }) {
     return () => { activo = false };
   }, []);
 
-  // Cierra la ventana emergente cuando se hace clic fuera de ella
-  useEffect(() => {
-    const manejarClicFuera = (e) => {
-      if (perfilRef.current && !perfilRef.current.contains(e.target)) {
-        setMenuAbierto(false);
-      }
-    };
-    document.addEventListener("mousedown", manejarClicFuera);
-    return () => document.removeEventListener("mousedown", manejarClicFuera);
-  }, []);
-
   return (
     <nav className="navbar">
       {/* Espacio para empujar los botones hacia la derecha */}
@@ -76,20 +55,23 @@ export default function Nav({ openNotifications }) {
         >
           <FaBell />
           {/* Indicador visual de notificaciones pendientes */}
-          {tieneNotificaciones && <span className="notification-dot"></span>}
+          <span className="notification-dot"></span>
         </button>
 
-        {/* Perfil: avatar con iniciales que abre la ventana emergente con la info */}
-        <div className="profile-wrap" ref={perfilRef}>
+        {/* Perfil: al pasar el cursor se muestra la ventana con la info del admin */}
+        <div
+          className="profile-wrap"
+          onMouseEnter={() => setMenuAbierto(true)}
+          onMouseLeave={() => setMenuAbierto(false)}
+        >
           <div
             className="profile-image profile-image-iniciales"
-            onClick={() => setMenuAbierto((v) => !v)}
             title={nombreAdmin || "Administrador"}
           >
             {iniciales(nombreAdmin)}
           </div>
 
-          {/* Ventana emergente del perfil */}
+          {/* Ventana emergente del perfil (solo información) */}
           {menuAbierto && (
             <div className="perfil-menu">
               <div className="perfil-menu-header">

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 // Importación de activos gráficos e iconos para la barra de navegación lateral
@@ -9,7 +10,7 @@ import clienteIcon from '../assets/icons8-grupo-de-usuario-2-32.png'
 import bolsasIcon from '../assets/suerte.png'
 import videosIcon from '../assets/icons8-vídeo-50.png'
 import FinanzasIcon from '../assets/finanza.png'
-
+import EditarInicio from '../pages/EditarInicio'
 
 // URL base de la API backend, para el cierre de sesión
 const BASE_URL = import.meta.env.VITE_API_URL + ''
@@ -19,6 +20,9 @@ const SideBar = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Controla si se muestra el modal de confirmación de cierre de sesión
+  const [confirmarLogout, setConfirmarLogout] = useState(false)
+
   // Evalúa si la ruta actual coincide con la del enlace para aplicar estilos activos
   const isActive = (path) => {
     return location.pathname === path ? 'active' : ''
@@ -26,6 +30,7 @@ const SideBar = () => {
 
   // Cierra la sesión en el servidor, limpia el almacenamiento local y redirige al login
   const cerrarSesion = async () => {
+    setConfirmarLogout(false)
     try {
       await fetch(`${BASE_URL}/logout`, { method: 'POST', credentials: 'include' })
     } catch {
@@ -142,7 +147,7 @@ const SideBar = () => {
             </Link>
           </li>
 
-                   {/* Módulo: Editar Inicio */}
+          {/* Módulo: Editar Inicio */}
           <li className={`menu-item ${isActive('/editarInicio')}`}>
             <Link to="/editarInicio" className="menu-link">
               <div className="icon-wrapper">
@@ -155,10 +160,9 @@ const SideBar = () => {
             </Link>
           </li>
 
-
-          {/* Botón: Cerrar sesión */}
+          {/* Botón: Cerrar sesión (abre el modal de confirmación) */}
           <li className="menu-item">
-            <button type="button" onClick={cerrarSesion} className="menu-link sidebar-logout-btn">
+            <button type="button" onClick={() => setConfirmarLogout(true)} className="menu-link sidebar-logout-btn">
               <div className="icon-wrapper">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -171,6 +175,33 @@ const SideBar = () => {
           </li>
         </ul>
       </aside>
+
+      {/* Modal de confirmación para cerrar sesión */}
+      {confirmarLogout && (
+        <div className="logout-modal-overlay" onClick={() => setConfirmarLogout(false)}>
+          <div className="logout-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="logout-modal-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+            </div>
+            <h3 className="logout-modal-title">Cerrar sesión</h3>
+            <p className="logout-modal-text">
+              ¿Estás seguro que quieres cerrar sesión? Tendrás que iniciar sesión de nuevo para volver a entrar.
+            </p>
+            <div className="logout-modal-actions">
+              <button className="logout-modal-btn logout-modal-cancel" onClick={() => setConfirmarLogout(false)}>
+                Cancelar
+              </button>
+              <button className="logout-modal-btn logout-modal-confirm" onClick={cerrarSesion}>
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }
