@@ -25,7 +25,8 @@ import {
   FaQuoteRight,
 } from "react-icons/fa";
 
-const BASE_URL = import.meta.env.VITE_API_URL + "";
+const RAW_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const BASE_URL = RAW_URL.replace(/\/+$/, "");
 
 const DEFAULT_BANNER = {
   linea1: "Joyas que hablan de ti",
