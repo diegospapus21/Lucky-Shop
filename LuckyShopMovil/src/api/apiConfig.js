@@ -12,11 +12,14 @@
  *        (ejemplo: http://192.168.0.15:4000/api  — obtén tu IP con `ipconfig`
  *         en Windows o `ifconfig`/`ip a` en Linux/Mac; PC y teléfono deben
  *         estar en la MISMA red WiFi)
- *   4) Backend ya desplegado en Render:      https://tu-backend.onrender.com/api
+ *   4) Backend en Render (DEFAULT):          https://lucky-shop-3.onrender.com/api
  *
- * Cambia SOLO esta constante según dónde estés probando.
+ * Por defecto la app usa el backend de Render. Para probar contra tu PC crea un
+ * archivo `.env` con EXPO_PUBLIC_API_URL=http://10.0.2.2:4000/api (ver
+ * `.env.example`). No hace falta editar este archivo.
  */
-export const API_BASE_URL = "http://10.0.2.2:4000/api";
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "https://lucky-shop-3.onrender.com/api";
 
 /**
  * endpoints
