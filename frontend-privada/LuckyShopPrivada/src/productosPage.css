@@ -941,25 +941,22 @@
 /* ════════════════════════════════════════════════════════════
    BUSCADOR DE PRODUCTOS CON SUGERENCIAS
    (Bolsas de la Suerte y Promociones)
+   La lista ocupa espacio dentro del modal (no flota), así
+   nunca se sale de él.
    ════════════════════════════════════════════════════════════ */
 
 .pm-buscador {
-  position: relative;
   width: 100%;
 }
 
 .pm-sugerencias {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 20;
-  max-height: 280px;
+  margin-top: 6px;
+  max-height: 220px;
   overflow-y: auto;
   background: #fff;
   border: 1px solid #e1e5e8;
   border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .pm-sugerencia {

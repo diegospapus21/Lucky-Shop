@@ -39,40 +39,22 @@ const obtenerPrecioProducto = (producto) => {
   return Number(precio || 0).toFixed(2)
 }
 
-// Se revisan varios nombres de propiedades para evitar problemas
-// dependiendo de cómo esté construido el documento en MongoDB.
-const CAMPOS_IMAGEN_TEXTO = [
-  'imagen',
-  'image',
-  'imageUrl',
-  'imagenUrl',
-  'url',
-  'foto'
-]
-
-const CAMPOS_IMAGEN_OBJETO = ['image', 'imagen', 'photo', 'picture']
-
 const esTextoValido = (valor) =>
   typeof valor === 'string' && valor.trim() !== ''
 
+// Imagen del producto según el esquema:
+// 1. imagenPresentacion (imagen principal)
+// 2. imagenes[0] (primera del arreglo)
 const obtenerImagenProducto = (producto) => {
   if (!producto) return null
 
-  // 1. Propiedades que son texto (URL directa)
-  for (const campo of CAMPOS_IMAGEN_TEXTO) {
-    if (esTextoValido(producto[campo])) {
-      return producto[campo]
-    }
+  if (esTextoValido(producto.imagenPresentacion)) {
+    return producto.imagenPresentacion
   }
 
-  // 2. Propiedades que son objeto (Cloudinary, etc.)
-  for (const campo of CAMPOS_IMAGEN_OBJETO) {
-    const valor = producto[campo]
-
-    if (valor && typeof valor === 'object') {
-      if (esTextoValido(valor.secure_url)) return valor.secure_url
-      if (esTextoValido(valor.url)) return valor.url
-    }
+  if (Array.isArray(producto.imagenes)) {
+    const primera = producto.imagenes.find(esTextoValido)
+    if (primera) return primera
   }
 
   return null
@@ -1051,140 +1033,6 @@ const Bolsas = () => {
             margin: 8px 0 18px;
             border-radius: 9px;
             background: #f2f3f4;
-          }
-
-          /* BUSCADOR DE PRODUCTOS */
-
-          .pm-buscador {
-            position: relative;
-            width: 100%;
-          }
-
-          .pm-sugerencias {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            right: 0;
-            z-index: 20;
-            max-height: 280px;
-            overflow-y: auto;
-            background: white;
-            border: 1px solid #e1e5e8;
-            border-radius: 10px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-          }
-
-          .pm-sugerencia {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            width: 100%;
-            padding: 8px 12px;
-            border: none;
-            background: transparent;
-            text-align: left;
-            cursor: pointer;
-            box-sizing: border-box;
-          }
-
-          .pm-sugerencia:hover {
-            background: #f2f3f4;
-          }
-
-          .pm-sugerencia-img {
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            border-radius: 8px;
-            background: #eeeeee;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .pm-sugerencia-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-          }
-
-          .pm-sugerencia-img span {
-            font-size: 8px;
-            color: #666;
-            text-align: center;
-          }
-
-          .pm-sugerencia-info {
-            min-width: 0;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-          }
-
-          .pm-sugerencia-info strong {
-            font-size: 14px;
-            line-height: 18px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .pm-sugerencia-info span {
-            font-size: 13px;
-            color: #194b2d;
-            font-weight: 600;
-          }
-
-          .pm-sugerencia-vacia {
-            padding: 12px 14px;
-            font-size: 14px;
-            color: #777;
-          }
-
-          /* PRODUCTOS SELECCIONADOS (CHIPS) */
-
-          .pm-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-          }
-
-          .pm-chips-vacio {
-            font-size: 13px;
-            color: #888;
-          }
-
-          .pm-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 10px 6px 12px;
-            border-radius: 999px;
-            background: #194b2d;
-            color: white;
-            font-size: 13px;
-            max-width: 100%;
-          }
-
-          .pm-chip button {
-            border: none;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            font-size: 10px;
-            line-height: 18px;
-            padding: 0;
-            cursor: pointer;
-          }
-
-          .pm-chip button:hover {
-            background: rgba(255, 255, 255, 0.4);
           }
 
           /* BOTONES */

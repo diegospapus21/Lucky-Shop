@@ -12,7 +12,7 @@ const POR_PAGINA = 10
 // Da formato corto a una fecha (ej: "15 jul. 2026")
 const formatoFecha = (f) => (f ? new Date(f).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
 
-// Helpers de producto (nombre, precio e imagen)
+// ── Helpers de producto (nombre, precio e imagen) ──
 const obtenerNombreProducto = (p) =>
   p?.nombre || p?.name || p?.productName || p?.nombreProducto || 'Producto sin nombre'
 
@@ -21,19 +21,17 @@ const obtenerPrecioProducto = (p) =>
 
 const esTextoValido = (v) => typeof v === 'string' && v.trim() !== ''
 
+// Imagen del producto según el esquema:
+// 1. imagenPresentacion (imagen principal)
+// 2. imagenes[0] (primera del arreglo)
 const obtenerImagenProducto = (p) => {
   if (!p) return null
 
-  for (const campo of ['imagen', 'image', 'imageUrl', 'imagenUrl', 'url', 'foto']) {
-    if (esTextoValido(p[campo])) return p[campo]
-  }
+  if (esTextoValido(p.imagenPresentacion)) return p.imagenPresentacion
 
-  for (const campo of ['image', 'imagen', 'photo', 'picture']) {
-    const v = p[campo]
-    if (v && typeof v === 'object') {
-      if (esTextoValido(v.secure_url)) return v.secure_url
-      if (esTextoValido(v.url)) return v.url
-    }
+  if (Array.isArray(p.imagenes)) {
+    const primera = p.imagenes.find(esTextoValido)
+    if (primera) return primera
   }
 
   return null
@@ -43,7 +41,7 @@ const obtenerImagenProducto = (p) => {
 const normalizar = (t) =>
   String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
-//Modal para crear / editar promoción 
+// ── Modal para crear / editar promoción ──
 const PromocionModal = ({ promocion, onClose, onGuardado }) => {
   const esEditar = !!promocion
   const [productos, setProductos] = useState([])  // Lista de productos activos para elegir cuál promocionar
@@ -155,13 +153,11 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
     }
   }
 
+  const imagenSel = obtenerImagenProducto(productoSel)
+
   return (
     <div className="pm-overlay" onClick={onClose}>
-      <div
-        className="pm-modal pm-form-modal"
-        style={{ overflow: 'visible' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="pm-modal pm-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="pm-form-header">
           <span className="pm-detalles-bar"></span>
           <h2>{esEditar ? 'Editar promoción' : 'Nueva promoción'}</h2>
@@ -175,9 +171,9 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
             {productoSel ? (
               <div className="pm-producto-elegido">
                 <div className="pm-sugerencia-img">
-                  {obtenerImagenProducto(productoSel) ? (
+                  {imagenSel ? (
                     <img
-                      src={obtenerImagenProducto(productoSel)}
+                      src={imagenSel}
                       alt={obtenerNombreProducto(productoSel)}
                       onError={(e) => { e.currentTarget.style.display = 'none' }}
                     />
