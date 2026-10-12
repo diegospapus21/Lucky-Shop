@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import Sidebar from "../components/SideBar";
 import Nav from "../components/Nav";
@@ -10,6 +10,8 @@ import ConfirmModal from "../components/ConfirmModal";
 import "../AdminShell.css";
 import "./Finanzas.css";
 
+const POR_PAGINA = 5;
+
 const formatoMoneda = (n) => `$${Number(n).toFixed(2)}`;
 
 export default function Finanzas() {
@@ -19,9 +21,6 @@ export default function Finanzas() {
     tendencia,
     resumen,
     movimientos,
-    hayMasMovimientos,
-    mostrarTodo,
-    toggleMostrarTodo,
     filtroTipo,
     setFiltroTipo,
     registrarGasto,
@@ -37,7 +36,29 @@ export default function Finanzas() {
   const [filaAbierta, setFilaAbierta] = useState(null);
   const [errorGasto, setErrorGasto] = useState(null);
   const [notifAbierta, setNotifAbierta] = useState(false);
-  const [confirmEliminar, setConfirmEliminar] = useState(null); // { tipo: "gasto"|"ganancia", id, mensaje }
+  const [confirmEliminar, setConfirmEliminar] = useState(null); // { id, mensaje }
+  const [paginaActual, setPaginaActual] = useState(1);
+
+  // Al cambiar entre ganancias y gastos, vuelve a la primera página
+  useEffect(() => {
+    setPaginaActual(1);
+    setFilaAbierta(null);
+  }, [filtroTipo]);
+
+  // Paginación de la tabla de movimientos
+  const totalPaginas = Math.max(1, Math.ceil(movimientos.length / POR_PAGINA));
+  const inicio = (paginaActual - 1) * POR_PAGINA;
+  const movimientosPagina = movimientos.slice(inicio, inicio + POR_PAGINA);
+
+  // Si al eliminar queda vacía la página actual, retrocede a la última disponible
+  useEffect(() => {
+    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas);
+  }, [totalPaginas, paginaActual]);
+
+  const cambiarPagina = (nueva) => {
+    setPaginaActual(nueva);
+    setFilaAbierta(null);
+  };
 
   // Abre el modal en modo "crear" (sin gasto precargado)
   const abrirNuevoGasto = () => {
@@ -100,130 +121,174 @@ export default function Finanzas() {
       <main className="admin-main">
         <Nav openNotifications={() => setNotifAbierta(true)} />
         <div className="finanzas-pagina">
-      <h1 className="finanzas-titulo">Finanzas</h1>
+          <h1 className="finanzas-titulo">Finanzas</h1>
 
-      {error && <p className="finanzas-estado-error">No se pudo cargar la información financiera: {error}</p>}
+          {error && <p className="finanzas-estado-error">No se pudo cargar la información financiera: {error}</p>}
 
-      {cargando ? (
-        <p className="finanzas-estado">Cargando información financiera…</p>
-      ) : (
-        <>
-          <div className="finanzas-cuerpo-superior">
-            {/* Tarjeta con la gráfica de tendencia de ingresos/gastos */}
-            <div className="finanzas-tarjeta">
-              <p className="finanzas-tarjeta-titulo">Tendencia de ingresos mensuales</p>
-              <div className="finanzas-grafica">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={tendencia}>
-                    <XAxis dataKey="mes" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(valor) => formatoMoneda(valor)} />
-                    <Line type="monotone" dataKey="ingresos" stroke="#5aa06c" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="gastos" stroke="#e19bb0" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+          {cargando ? (
+            <p className="finanzas-estado">Cargando información financiera…</p>
+          ) : (
+            <>
+              <div className="finanzas-cuerpo-superior">
+                {/* Tarjeta con la gráfica de tendencia de ingresos/gastos */}
+                <div className="finanzas-tarjeta">
+                  <p className="finanzas-tarjeta-titulo">Tendencia de ingresos mensuales</p>
+                  <div className="finanzas-grafica">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={tendencia}>
+                        <XAxis dataKey="mes" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <Tooltip formatter={(valor) => formatoMoneda(valor)} />
+                        <Line type="monotone" dataKey="ingresos" stroke="#5aa06c" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="gastos" stroke="#e19bb0" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <button className="finanzas-boton-gasto" onClick={abrirNuevoGasto}>
+                    Registrar gasto
+                  </button>
+                </div>
+
+                {/* Tarjeta con el resumen numérico del período (ingresos, pérdidas, balance) */}
+                <div className="finanzas-tarjeta">
+                  <p className="finanzas-tarjeta-titulo" style={{ borderLeft: "none", paddingLeft: 0 }}>
+                    Resumen del periodo
+                  </p>
+                  <div className="finanzas-resumen-linea">
+                    <div>
+                      <p className="finanzas-resumen-etiqueta">Ingresos totales</p>
+                      <p className="finanzas-resumen-valor verde">{formatoMoneda(resumen.ingresosTotales)}</p>
+                    </div>
+                    <div>
+                      <p className="finanzas-resumen-etiqueta">Pérdidas totales</p>
+                      <p className="finanzas-resumen-valor rojo">{formatoMoneda(resumen.perdidasTotales)}</p>
+                    </div>
+                    <div>
+                      <p className="finanzas-resumen-etiqueta">Balance total</p>
+                      <p className="finanzas-resumen-valor verde">{formatoMoneda(resumen.balanceTotal)}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <button className="finanzas-boton-gasto" onClick={abrirNuevoGasto}>
-                Registrar gasto
-              </button>
-            </div>
+              {/* Tabla de movimientos (ganancias o gastos, según la pestaña) */}
+              <div className="finanzas-tabla-wrap">
+                <div className="finanzas-tabla-encabezado">
+                  <div className="finanzas-tabs">
+                    <button
+                      className={`finanzas-tab ${filtroTipo === "ganancia" ? "active" : ""}`}
+                      onClick={() => setFiltroTipo("ganancia")}
+                    >
+                      Ganancias
+                    </button>
+                    <button
+                      className={`finanzas-tab ${filtroTipo === "gasto" ? "active" : ""}`}
+                      onClick={() => setFiltroTipo("gasto")}
+                    >
+                      Gastos
+                    </button>
+                  </div>
 
-            {/* Tarjeta con el resumen numérico del período (ingresos, pérdidas, balance) */}
-            <div className="finanzas-tarjeta">
-              <p className="finanzas-tarjeta-titulo" style={{ borderLeft: "none", paddingLeft: 0 }}>
-                Resumen del periodo
-              </p>
-              <div className="finanzas-resumen-linea">
-                <div>
-                  <p className="finanzas-resumen-etiqueta">Ingresos totales</p>
-                  <p className="finanzas-resumen-valor verde">{formatoMoneda(resumen.ingresosTotales)}</p>
+                  {movimientos.length > 0 && (
+                    <span className="finanzas-contador">
+                      Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, movimientos.length)} de {movimientos.length}
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <p className="finanzas-resumen-etiqueta">Pérdidas totales</p>
-                  <p className="finanzas-resumen-valor rojo">{formatoMoneda(resumen.perdidasTotales)}</p>
-                </div>
-                <div>
-                  <p className="finanzas-resumen-etiqueta">Balance total</p>
-                  <p className="finanzas-resumen-valor verde">{formatoMoneda(resumen.balanceTotal)}</p>
-                </div>
+
+                <table className="finanzas-tabla">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Producto</th>
+                      <th>Monto</th>
+                      <th>Estado</th>
+                      <th>Fecha</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movimientos.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: "center", padding: "24px" }}>
+                          No hay {filtroTipo === "gasto" ? "gastos" : "ganancias"} registrados
+                        </td>
+                      </tr>
+                    ) : (
+                      movimientosPagina.map((mov) => (
+                        <FilaMovimiento
+                          key={mov.id}
+                          movimiento={mov}
+                          abierta={filaAbierta === mov.id}
+                          onToggle={() => setFilaAbierta(filaAbierta === mov.id ? null : mov.id)}
+                          onEditar={() => abrirEditarGasto(mov)}
+                          onEliminar={() => pedirEliminar(mov)}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+
+                {/* PAGINACIÓN */}
+                {totalPaginas > 1 && (
+                  <div className="finanzas-paginacion">
+                    <button
+                      className="finanzas-pagina-btn"
+                      disabled={paginaActual === 1}
+                      onClick={() => cambiarPagina(paginaActual - 1)}
+                    >
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        className={`finanzas-pagina-btn ${paginaActual === n ? "active" : ""}`}
+                        onClick={() => cambiarPagina(n)}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      className="finanzas-pagina-btn"
+                      disabled={paginaActual === totalPaginas}
+                      onClick={() => cambiarPagina(paginaActual + 1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+            </>
+          )}
 
-          {/* Tabla de últimos movimientos (ganancias o gastos, según el filtro) */}
-          <div className="finanzas-tabla-wrap">
-            <div className="finanzas-tabla-encabezado">
-              <p>
-                Últimas{" "}
-                <select className="pill pill-select" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
-                  <option value="ganancia">ganancias</option>
-                  <option value="gasto">gastos</option>
-                </select>{" "}
-                registrados
-              </p>
-              {hayMasMovimientos && (
-                <button className="finanzas-boton-vertodo" onClick={toggleMostrarTodo}>
-                  {mostrarTodo ? "Ver menos" : "Ver todos"}
-                </button>
-              )}
-            </div>
-
-            <table className="finanzas-tabla">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Producto</th>
-                  <th>Monto</th>
-                  <th>Estado</th>
-                  <th>Fecha</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {movimientos.map((mov) => (
-                  <FilaMovimiento
-                    key={mov.id}
-                    movimiento={mov}
-                    abierta={filaAbierta === mov.id}
-                    onToggle={() => setFilaAbierta(filaAbierta === mov.id ? null : mov.id)}
-                    onEditar={() => abrirEditarGasto(mov)}
-                    onEliminar={() => pedirEliminar(mov)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {/* Modal para crear/editar un gasto */}
-      <ModalRegistrarGasto
-        abierto={modalGastoAbierto}
-        gasto={gastoEditando}
-        onCerrar={() => setModalGastoAbierto(false)}
-        onGuardar={manejarGuardarGasto}
-        error={errorGasto}
-      />
-      {/* Modal de confirmación tras guardar/actualizar un gasto exitosamente */}
-      <ModalExito
-        abierto={modalExitoAbierto}
-        mensaje={
-          gastoEditando
-            ? "Gasto actualizado satisfactoriamente"
-            : ultimoGastoGuardado
-            ? `Gasto de ${formatoMoneda(ultimoGastoGuardado.cantidadGasto)} registrado satisfactoriamente`
-            : "Gasto registrado satisfactoriamente"
-        }
-        onCerrar={cerrarModalExito}
-      />
-      {/* Modal de confirmación antes de eliminar un gasto */}
-      <ConfirmModal
-        isOpen={!!confirmEliminar}
-        title="Confirmación"
-        message={confirmEliminar?.mensaje}
-        onConfirm={confirmarEliminar}
-        onCancel={() => setConfirmEliminar(null)}
-      />
+          {/* Modal para crear/editar un gasto */}
+          <ModalRegistrarGasto
+            abierto={modalGastoAbierto}
+            gasto={gastoEditando}
+            onCerrar={() => setModalGastoAbierto(false)}
+            onGuardar={manejarGuardarGasto}
+            error={errorGasto}
+          />
+          {/* Modal de confirmación tras guardar/actualizar un gasto exitosamente */}
+          <ModalExito
+            abierto={modalExitoAbierto}
+            mensaje={
+              gastoEditando
+                ? "Gasto actualizado satisfactoriamente"
+                : ultimoGastoGuardado
+                ? `Gasto de ${formatoMoneda(ultimoGastoGuardado.cantidadGasto)} registrado satisfactoriamente`
+                : "Gasto registrado satisfactoriamente"
+            }
+            onCerrar={cerrarModalExito}
+          />
+          {/* Modal de confirmación antes de eliminar un gasto */}
+          <ConfirmModal
+            isOpen={!!confirmEliminar}
+            title="Confirmación"
+            message={confirmEliminar?.mensaje}
+            onConfirm={confirmarEliminar}
+            onCancel={() => setConfirmEliminar(null)}
+          />
         </div>
       </main>
       <NotificacionesModal abierto={notifAbierta} onCerrar={() => setNotifAbierta(false)} />

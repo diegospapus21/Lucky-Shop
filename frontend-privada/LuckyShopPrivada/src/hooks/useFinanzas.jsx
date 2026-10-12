@@ -27,13 +27,13 @@ async function solicitar(path, { method = "GET", body } = {}) {
  * Trae ganancias y gastos desde el backend, calcula la tendencia mensual y
  * los totales del periodo, y expone editar/eliminar tanto para gastos como
  * para ganancias, más un filtro para ver solo un tipo de movimiento.
+ * La paginación de la tabla se hace en la página (Finanzas.jsx).
  */
 export function useFinanzas() {
   const [ganancias, setGanancias] = useState([]);
   const [gastos, setGastos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
-  const [mostrarTodo, setMostrarTodo] = useState(false);
   const [ultimoGastoGuardado, setUltimoGastoGuardado] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState("ganancia"); // "gasto" | "ganancia"
 
@@ -73,21 +73,22 @@ export function useFinanzas() {
     };
   }, [ganancias, gastos]);
 
-  // Agrupa ganancias y gastos por mes para alimentar la gráfica de tendencia
+  // Agrupa ganancias y gastos por mes (en orden cronológico) para la gráfica de tendencia
   const tendencia = useMemo(() => {
     const mapa = new Map();
 
     const registrar = (fecha, campo, monto) => {
       if (!fecha) return;
-      const mes = NOMBRES_MES[new Date(fecha).getMonth()];
-      if (!mapa.has(mes)) mapa.set(mes, { mes, ingresos: 0, gastos: 0 });
-      mapa.get(mes)[campo] += Number(monto) || 0;
+      const d = new Date(fecha);
+      const clave = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
+      if (!mapa.has(clave)) mapa.set(clave, { clave, mes: NOMBRES_MES[d.getMonth()], ingresos: 0, gastos: 0 });
+      mapa.get(clave)[campo] += Number(monto) || 0;
     };
 
     ganancias.forEach((g) => registrar(g.fechaMes, "ingresos", g.totalGanancias));
     gastos.forEach((g) => registrar(g.fechaGasto, "gastos", g.cantidadGasto));
 
-    return Array.from(mapa.values());
+    return Array.from(mapa.values()).sort((a, b) => a.clave.localeCompare(b.clave));
   }, [ganancias, gastos]);
 
   const registrarGasto = useCallback(async (datosGasto) => {
@@ -119,31 +120,31 @@ export function useFinanzas() {
   const movimientos = useMemo(() => {
     const combinados = [
       ...ganancias.map((g) => {
-  const primeraVenta = g.ventas?.[0]?.idVenta;
-  const carrito = primeraVenta?.IdCarrito;
-  const productos = carrito?.productos || [];
-  const cliente = carrito?.idCliente;
+        const primeraVenta = g.ventas?.[0]?.idVenta;
+        const carrito = primeraVenta?.IdCarrito;
+        const productos = carrito?.productos || [];
+        const cliente = carrito?.idCliente;
 
-  const nombreProducto =
-    productos.length === 0
-      ? "—"
-      : productos.length === 1
-      ? productos[0]?.idProducto?.nombre || "—"
-      : `${productos[0]?.idProducto?.nombre || "Producto"} y ${productos.length - 1} más`;
+        const nombreProducto =
+          productos.length === 0
+            ? "—"
+            : productos.length === 1
+            ? productos[0]?.idProducto?.nombre || "—"
+            : `${productos[0]?.idProducto?.nombre || "Producto"} y ${productos.length - 1} más`;
 
-  const fechaReal = primeraVenta?.fecha || g.fechaMes;
+        const fechaReal = primeraVenta?.fecha || g.fechaMes;
 
-  return {
-    id: g._id ?? g.id,
-    cliente: cliente ? `${cliente.name || ""} ${cliente.lastName || ""}`.trim() : "Ganancia del mes",
-    producto: nombreProducto,
-    monto: Number(g.totalGanancias ?? 0),
-    estado: "Completado",
-    fecha: fechaReal,
-    tipo: "ganancia",
-    original: g,
-  };
-}),
+        return {
+          id: g._id ?? g.id,
+          cliente: cliente ? `${cliente.name || ""} ${cliente.lastName || ""}`.trim() : "Ganancia del mes",
+          producto: nombreProducto,
+          monto: Number(g.totalGanancias ?? 0),
+          estado: "Completado",
+          fecha: fechaReal,
+          tipo: "ganancia",
+          original: g,
+        };
+      }),
       ...gastos.map((g) => ({
         id: g._id ?? g.id,
         cliente: g.descripcionGasto || "Gasto",
@@ -158,22 +159,17 @@ export function useFinanzas() {
     return combinados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   }, [ganancias, gastos]);
 
-  // Filtra por tipo (ganancias o gastos) antes de limitar a 3
+  // Solo los movimientos del tipo elegido (ganancias o gastos); la página los pagina
   const movimientosFiltrados = useMemo(() => {
     return movimientos.filter((m) => m.tipo === filtroTipo);
   }, [movimientos, filtroTipo]);
-
-  const movimientosVisibles = mostrarTodo ? movimientosFiltrados : movimientosFiltrados.slice(0, 3);
 
   return {
     cargando,
     error,
     tendencia,
     resumen,
-    movimientos: movimientosVisibles,
-    hayMasMovimientos: movimientosFiltrados.length > 3,
-    mostrarTodo,
-    toggleMostrarTodo: () => setMostrarTodo((v) => !v),
+    movimientos: movimientosFiltrados,
     filtroTipo,
     setFiltroTipo,
     registrarGasto,
