@@ -1,5 +1,5 @@
 // PromocionesAdmin.jsx — gestión de promociones (admin)
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Sidebar from '../components/SideBar'
 import Nav from '../components/Nav'
 import NotificacionesModal from '../components/NotificationsModal'
@@ -12,12 +12,46 @@ const POR_PAGINA = 10
 // Da formato corto a una fecha (ej: "15 jul. 2026")
 const formatoFecha = (f) => (f ? new Date(f).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
 
+// Helpers de producto (nombre, precio e imagen)
+const obtenerNombreProducto = (p) =>
+  p?.nombre || p?.name || p?.productName || p?.nombreProducto || 'Producto sin nombre'
+
+const obtenerPrecioProducto = (p) =>
+  Number(p?.precio ?? p?.price ?? p?.productPrice ?? 0).toFixed(2)
+
+const esTextoValido = (v) => typeof v === 'string' && v.trim() !== ''
+
+const obtenerImagenProducto = (p) => {
+  if (!p) return null
+
+  for (const campo of ['imagen', 'image', 'imageUrl', 'imagenUrl', 'url', 'foto']) {
+    if (esTextoValido(p[campo])) return p[campo]
+  }
+
+  for (const campo of ['image', 'imagen', 'photo', 'picture']) {
+    const v = p[campo]
+    if (v && typeof v === 'object') {
+      if (esTextoValido(v.secure_url)) return v.secure_url
+      if (esTextoValido(v.url)) return v.url
+    }
+  }
+
+  return null
+}
+
+// Quita tildes y pasa a minúsculas para buscar mejor
+const normalizar = (t) =>
+  String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 //Modal para crear / editar promoción 
 const PromocionModal = ({ promocion, onClose, onGuardado }) => {
   const esEditar = !!promocion
   const [productos, setProductos] = useState([])  // Lista de productos activos para elegir cuál promocionar
+  const [productoSel, setProductoSel] = useState(promocion?.idProducto || null)  // Producto elegido
+  const [busquedaProducto, setBusquedaProducto] = useState('')
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
+  const buscadorRef = useRef(null)
   const [form, setForm] = useState({
-    idProducto: promocion?.idProducto?._id || '',
     descuento: promocion?.descuento || '',
     fechaInicio: promocion?.fechaInicio ? new Date(promocion.fechaInicio).toISOString().slice(0, 10) : '',
     fechaFin: promocion?.fechaFin ? new Date(promocion.fechaFin).toISOString().slice(0, 10) : '',
@@ -31,7 +65,10 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
       try {
         const res = await fetch(`${BASE_URL}/productos?estado=activo`, { credentials: 'include' })
         const data = await res.json()
-        setProductos(Array.isArray(data) ? data : [])
+        if (Array.isArray(data)) setProductos(data)
+        else if (Array.isArray(data.productos)) setProductos(data.productos)
+        else if (Array.isArray(data.data)) setProductos(data.data)
+        else setProductos([])
       } catch {
         setProductos([])
       }
@@ -39,15 +76,47 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
     fetchProductos()
   }, [])
 
+  // Cierra las sugerencias al hacer clic fuera del buscador
+  useEffect(() => {
+    const handleClickFuera = (e) => {
+      if (buscadorRef.current && !buscadorRef.current.contains(e.target)) {
+        setMostrarSugerencias(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickFuera)
+    return () => document.removeEventListener('mousedown', handleClickFuera)
+  }, [])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Sugerencias que coinciden con lo escrito
+  const sugerencias = busquedaProducto.trim()
+    ? productos
+        .filter((p) => normalizar(obtenerNombreProducto(p)).includes(normalizar(busquedaProducto)))
+        .slice(0, 8)
+    : []
+
+  const elegirProducto = (producto) => {
+    setProductoSel(producto)
+    setBusquedaProducto('')
+    setMostrarSugerencias(false)
+  }
+
+  const handleBuscadorKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (sugerencias[0]) elegirProducto(sugerencias[0])
+    }
+    if (e.key === 'Escape') setMostrarSugerencias(false)
+  }
+
   // Valida el formulario y crea o actualiza la promoción según corresponda
   const handleSubmit = async () => {
     setError('')
-    if (!form.idProducto || !form.descuento || !form.fechaInicio || !form.fechaFin) {
+    if (!productoSel?._id || !form.descuento || !form.fechaInicio || !form.fechaFin) {
       setError('Completa todos los campos.')
       return
     }
@@ -69,7 +138,7 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          idProducto: form.idProducto,
+          idProducto: productoSel._id,
           descuento: Number(form.descuento),
           fechaInicio: form.fechaInicio,
           fechaFin: form.fechaFin,
@@ -88,21 +157,106 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
 
   return (
     <div className="pm-overlay" onClick={onClose}>
-      <div className="pm-modal pm-form-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="pm-modal pm-form-modal"
+        style={{ overflow: 'visible' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="pm-form-header">
           <span className="pm-detalles-bar"></span>
           <h2>{esEditar ? 'Editar promoción' : 'Nueva promoción'}</h2>
         </div>
 
         <div className="pm-form-fields">
+          {/* PRODUCTO (BUSCADOR) */}
           <div className="pm-field-group">
             <label>Producto</label>
-            <select name="idProducto" value={form.idProducto} onChange={handleChange} className="pm-input">
-              <option value="">Selecciona un producto</option>
-              {productos.map((p) => (
-                <option key={p._id} value={p._id}>{p.nombre}</option>
-              ))}
-            </select>
+
+            {productoSel ? (
+              <div className="pm-producto-elegido">
+                <div className="pm-sugerencia-img">
+                  {obtenerImagenProducto(productoSel) ? (
+                    <img
+                      src={obtenerImagenProducto(productoSel)}
+                      alt={obtenerNombreProducto(productoSel)}
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  ) : (
+                    <span>Sin imagen</span>
+                  )}
+                </div>
+
+                <div className="pm-sugerencia-info">
+                  <strong>{obtenerNombreProducto(productoSel)}</strong>
+                  {productoSel.precio !== undefined && (
+                    <span>${obtenerPrecioProducto(productoSel)}</span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="pm-producto-quitar"
+                  title="Cambiar producto"
+                  onClick={() => setProductoSel(null)}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div className="pm-buscador" ref={buscadorRef}>
+                <input
+                  type="text"
+                  className="pm-input"
+                  placeholder="Escribe el nombre del producto..."
+                  value={busquedaProducto}
+                  onChange={(e) => {
+                    setBusquedaProducto(e.target.value)
+                    setMostrarSugerencias(true)
+                  }}
+                  onFocus={() => setMostrarSugerencias(true)}
+                  onKeyDown={handleBuscadorKeyDown}
+                  autoComplete="off"
+                />
+
+                {mostrarSugerencias && busquedaProducto.trim() && (
+                  <div className="pm-sugerencias">
+                    {sugerencias.length === 0 ? (
+                      <div className="pm-sugerencia-vacia">No se encontraron productos</div>
+                    ) : (
+                      sugerencias.map((producto) => {
+                        const imagen = obtenerImagenProducto(producto)
+
+                        return (
+                          <button
+                            key={producto._id}
+                            type="button"
+                            className="pm-sugerencia"
+                            onClick={() => elegirProducto(producto)}
+                          >
+                            <div className="pm-sugerencia-img">
+                              {imagen ? (
+                                <img
+                                  src={imagen}
+                                  alt={obtenerNombreProducto(producto)}
+                                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                />
+                              ) : (
+                                <span>Sin imagen</span>
+                              )}
+                            </div>
+
+                            <div className="pm-sugerencia-info">
+                              <strong>{obtenerNombreProducto(producto)}</strong>
+                              <span>${obtenerPrecioProducto(producto)}</span>
+                            </div>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="pm-field-group">
