@@ -9,16 +9,8 @@ import '../productosPage.css'
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const POR_PAGINA = 10
 
-// Da formato corto a una fecha (ej: "15 jul. 2026") sin desfase de zona horaria
-const formatoFecha = (f) =>
-  f
-    ? new Date(f).toLocaleDateString('es-SV', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'UTC',
-      })
-    : '—'
+// Da formato corto a una fecha (ej: "15 jul. 2026")
+const formatoFecha = (f) => (f ? new Date(f).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
 
 // ── Helpers de producto (nombre, precio e imagen) ──
 const obtenerNombreProducto = (p) =>
@@ -356,12 +348,9 @@ const PromocionesAdmin = () => {
   }
 
   // Determina si una promoción está vigente hoy: activa y dentro del rango de fechas
-  // (se compara por día para evitar desfases de zona horaria)
   const estaVigente = (p) => {
-    const hoy = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD en hora local
-    const inicio = new Date(p.fechaInicio).toISOString().slice(0, 10)
-    const fin = new Date(p.fechaFin).toISOString().slice(0, 10)
-    return p.estado === 'activa' && inicio <= hoy && fin >= hoy
+    const hoy = new Date()
+    return p.estado === 'activa' && new Date(p.fechaInicio) <= hoy && new Date(p.fechaFin) >= hoy
   }
 
   // Paginación de la tabla de promociones
