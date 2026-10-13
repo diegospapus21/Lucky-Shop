@@ -25,6 +25,9 @@ const getNombreCliente = (idCliente) => {
   return `${idCliente.name || ''} ${idCliente.lastName || ''}`.trim() || idCliente.email || 'Sin nombre'
 }
 
+// Nombre del video tal como se muestra en la tarjeta
+const getNombreVideo = (combo) => combo.idProducto?.nombre || 'Combo suerte'
+
 const getStatusInfo = (status) => {
   if (status === true)  return { label: 'Aceptada',  clase: 'aceptada' }
   if (status === false) return { label: 'Denegada',  clase: 'denegada' }
@@ -326,7 +329,6 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
 const VideosCombos = () => {
   const {
     combos,
-    totalCombos,
     loading,
     error,
     busqueda,
@@ -412,9 +414,10 @@ const VideosCombos = () => {
             </svg>
             <input
               className="pm-search-input"
-              placeholder="Buscar cliente"
+              placeholder="Buscar por cliente o video"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
+              style={{ width: 280 }}
             />
           </div>
         </div>
@@ -440,7 +443,11 @@ const VideosCombos = () => {
             {!loading && combos.length === 0 && (
               <div className="vc-empty">
                 <IconoVideoVacio />
-                <p>No se encontraron videos combos.</p>
+                <p>
+                  {busqueda.trim()
+                    ? `No se encontraron resultados para "${busqueda.trim()}".`
+                    : 'No se encontraron videos combos.'}
+                </p>
               </div>
             )}
 
@@ -471,7 +478,7 @@ const VideosCombos = () => {
 
                   {/* Info del combo */}
                   <div className="vc-info">
-                    <p className="vc-combo-nombre">{combo.idProducto?.nombre || 'Combo suerte'}</p>
+                    <p className="vc-combo-nombre">{getNombreVideo(combo)}</p>
                     <div className="vc-meta">
                       <span><strong>Cliente:</strong> {nombreCliente}</span>
                       <span><strong>Fecha:</strong> {formatFecha(combo.createdAt)}</span>

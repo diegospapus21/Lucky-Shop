@@ -2,9 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 
 const BASE_URL = import.meta.env.VITE_API_URL + '/videosCombo'
 
+// Quita tildes y pasa a minúsculas para buscar mejor
+const normalizar = (t) =>
+  String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 /**
  * Hook para el panel admin: trae todos los combos, permite filtrar por
- * estado y buscar por cliente, además de crear, actualizar y eliminar combos.
+ * estado y buscar por cliente o por nombre del video, además de crear,
+ * actualizar y eliminar combos.
  */
 export function useVideosCombos() {
   const [combos, setCombos] = useState([])
@@ -12,7 +17,7 @@ export function useVideosCombos() {
   const [error, setError] = useState('')
 
   const [busqueda, setBusqueda] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('Todos') // Todos | Aceptada | Denegada
+  const [filtroStatus, setFiltroStatus] = useState('Todos') // Todos | Aceptada | Denegada | Pendiente
 
   // Trae todos los combos desde el backend
   const fetchCombos = useCallback(async () => {
@@ -78,12 +83,18 @@ export function useVideosCombos() {
     setCombos((prev) => prev.filter((c) => c._id !== id))
   }, [])
 
-  // Filtra por estado (Aceptada/Denegada/Todos) y por texto de búsqueda (nombre del cliente)
+  // Filtra por estado y por texto de búsqueda (nombre del cliente o nombre del video)
   const combosFiltrados = combos.filter((c) => {
     const estadoTexto = c.status === true ? 'Aceptada' : c.status === false ? 'Denegada' : 'Pendiente'
     const coincideEstado = filtroStatus === 'Todos' || estadoTexto === filtroStatus
-    const nombreCliente = `${c.idCliente?.name || ''} ${c.idCliente?.lastName || ''}`.toLowerCase()
-    const coincideBusqueda = !busqueda.trim() || nombreCliente.includes(busqueda.toLowerCase())
+
+    const q = normalizar(busqueda.trim())
+    if (!q) return coincideEstado
+
+    const nombreCliente = normalizar(`${c.idCliente?.name || ''} ${c.idCliente?.lastName || ''}`)
+    const nombreVideo = normalizar(c.idProducto?.nombre || 'Combo suerte')
+    const coincideBusqueda = nombreCliente.includes(q) || nombreVideo.includes(q)
+
     return coincideEstado && coincideBusqueda
   })
 
