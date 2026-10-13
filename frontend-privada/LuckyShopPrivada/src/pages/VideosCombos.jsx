@@ -28,6 +28,23 @@ const getNombreCliente = (idCliente) => {
 // Nombre del video tal como se muestra en la tarjeta
 const getNombreVideo = (combo) => combo.idProducto?.nombre || 'Combo suerte'
 
+// Quita tildes y pasa a minúsculas para buscar mejor
+const normalizar = (t) =>
+  String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+// Iniciales para el avatar del cliente
+const getInitials = (name = '', lastName = '') => {
+  const n = name.trim()[0]?.toUpperCase() || ''
+  const l = lastName.trim()[0]?.toUpperCase() || ''
+  return (n + l) || '?'
+}
+
+// Mensaje que se le envía al cliente junto con su video
+const mensajeParaCliente = (cliente) => {
+  const nombre = (cliente?.name || '').trim() || 'Hola'
+  return `${nombre}, tu combo está listo, puedes ver qué suerte te tocó hoy`
+}
+
 const getStatusInfo = (status) => {
   if (status === true)  return { label: 'Aceptada',  clase: 'aceptada' }
   if (status === false) return { label: 'Denegada',  clase: 'denegada' }
@@ -149,19 +166,28 @@ const ConfirmEliminarModal = ({ combo, onClose, onConfirm }) => (
 const NuevoComboModal = ({ onClose, onCrear }) => {
   const [clientes, setClientes] = useState([])
   const [bolsas, setBolsas] = useState([])
+
+  // Cliente elegido y buscador de clientes
+  const [clienteSel, setClienteSel] = useState(null)
+  const [busquedaCliente, setBusquedaCliente] = useState('')
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
+  const buscadorRef = useRef(null)
+
   const [form, setForm] = useState({
-    idCliente: '',
     idProducto: '',
     mensaje: '',
     direccion: '',
   })
+  // Si el usuario escribió el mensaje a mano, ya no se sobrescribe al cambiar de cliente
+  const [mensajeEditado, setMensajeEditado] = useState(false)
+
   const [videoFile, setVideoFile] = useState(null)
   const [videoPreview, setVideoPreview] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef()
 
-  // Carga la lista de clientes y de bolsas de la suerte para los selects.
+  // Carga la lista de clientes y de bolsas de la suerte.
   // Las bolsas vienen de su propio endpoint /api/bolsas (no de /productos).
   useEffect(() => {
     const cargarDatos = async () => {
@@ -182,9 +208,63 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
     cargarDatos()
   }, [])
 
+  // Cierra las sugerencias al hacer clic fuera del buscador
+  useEffect(() => {
+    const handleClickFuera = (e) => {
+      if (buscadorRef.current && !buscadorRef.current.contains(e.target)) {
+        setMostrarSugerencias(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickFuera)
+    return () => document.removeEventListener('mousedown', handleClickFuera)
+  }, [])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  // El mensaje se marca como editado a mano (salvo que lo dejen vacío)
+  const handleMensajeChange = (e) => {
+    const value = e.target.value
+    setForm((prev) => ({ ...prev, mensaje: value }))
+    setMensajeEditado(value.trim() !== '')
+  }
+
+  // Sugerencias de clientes: coinciden por nombre, apellido o correo
+  const sugerencias = busquedaCliente.trim()
+    ? clientes
+        .filter((c) =>
+          normalizar(`${c.name || ''} ${c.lastName || ''} ${c.email || ''}`).includes(
+            normalizar(busquedaCliente.trim())
+          )
+        )
+        .slice(0, 8)
+    : []
+
+  const elegirCliente = (cliente) => {
+    setClienteSel(cliente)
+    setBusquedaCliente('')
+    setMostrarSugerencias(false)
+    // Genera el mensaje con el nombre del cliente (si no lo escribieron a mano)
+    if (!mensajeEditado) {
+      setForm((prev) => ({ ...prev, mensaje: mensajeParaCliente(cliente) }))
+    }
+  }
+
+  const quitarCliente = () => {
+    setClienteSel(null)
+    if (!mensajeEditado) {
+      setForm((prev) => ({ ...prev, mensaje: '' }))
+    }
+  }
+
+  const handleBuscadorKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (sugerencias[0]) elegirCliente(sugerencias[0])
+    }
+    if (e.key === 'Escape') setMostrarSugerencias(false)
   }
 
   const handleVideoChange = (e) => {
@@ -196,7 +276,7 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
 
   const handleSubmit = async () => {
     setError('')
-    if (!form.idCliente) {
+    if (!clienteSel?._id) {
       setError('Selecciona un cliente.')
       return
     }
@@ -207,7 +287,7 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
 
     setGuardando(true)
     try {
-      await onCrear({ ...form, videoFile })
+      await onCrear({ ...form, idCliente: clienteSel._id, videoFile })
       onClose()
     } catch (err) {
       setError(err.message)
@@ -216,9 +296,21 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
     }
   }
 
+  // Estilo de las iniciales del cliente (avatar)
+  const estiloAvatar = {
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#194b2d',
+    background: '#c8ecd3',
+  }
+
   return (
     <div className="vc-modal-overlay" onClick={onClose}>
-      <div className="vc-detalle-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+      <div
+        className="vc-detalle-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}
+      >
         <span className="vc-detalle-bar" />
         <h2>Nuevo video combo</h2>
 
@@ -252,14 +344,75 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
           onChange={handleVideoChange}
         />
 
+        {/* CLIENTE (BUSCADOR CON SUGERENCIAS) */}
         <div className="vc-detalle-row">
           <div className="vc-detalle-label">Cliente</div>
-          <select name="idCliente" value={form.idCliente} onChange={handleChange} className="pm-input">
-            <option value="">Selecciona un cliente</option>
-            {clientes.map((c) => (
-              <option key={c._id} value={c._id}>{c.name} {c.lastName}</option>
-            ))}
-          </select>
+
+          {clienteSel ? (
+            <div className="pm-producto-elegido">
+              <div className="pm-sugerencia-img" style={estiloAvatar}>
+                {getInitials(clienteSel.name, clienteSel.lastName)}
+              </div>
+
+              <div className="pm-sugerencia-info">
+                <strong>{getNombreCliente(clienteSel)}</strong>
+                {clienteSel.email && <span style={{ fontWeight: 400, color: '#6b7d74' }}>{clienteSel.email}</span>}
+              </div>
+
+              <button
+                type="button"
+                className="pm-producto-quitar"
+                title="Cambiar cliente"
+                onClick={quitarCliente}
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="pm-buscador" ref={buscadorRef}>
+              <input
+                type="text"
+                className="pm-input"
+                placeholder="Escribe el nombre del cliente..."
+                value={busquedaCliente}
+                onChange={(e) => {
+                  setBusquedaCliente(e.target.value)
+                  setMostrarSugerencias(true)
+                }}
+                onFocus={() => setMostrarSugerencias(true)}
+                onKeyDown={handleBuscadorKeyDown}
+                autoComplete="off"
+              />
+
+              {mostrarSugerencias && busquedaCliente.trim() && (
+                <div className="pm-sugerencias">
+                  {sugerencias.length === 0 ? (
+                    <div className="pm-sugerencia-vacia">No se encontraron clientes</div>
+                  ) : (
+                    sugerencias.map((cliente) => (
+                      <button
+                        key={cliente._id}
+                        type="button"
+                        className="pm-sugerencia"
+                        onClick={() => elegirCliente(cliente)}
+                      >
+                        <div className="pm-sugerencia-img" style={estiloAvatar}>
+                          {getInitials(cliente.name, cliente.lastName)}
+                        </div>
+
+                        <div className="pm-sugerencia-info">
+                          <strong>{getNombreCliente(cliente)}</strong>
+                          {cliente.email && (
+                            <span style={{ fontWeight: 400, color: '#6b7d74' }}>{cliente.email}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="vc-detalle-row">
@@ -277,9 +430,9 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
           <textarea
             name="mensaje"
             value={form.mensaje}
-            onChange={handleChange}
+            onChange={handleMensajeChange}
             className="pm-input pm-textarea"
-            placeholder="Ej: Tu combo está listo, mira qué suerte te tocó hoy"
+            placeholder="Selecciona un cliente y el mensaje se generará automáticamente"
           />
         </div>
 
