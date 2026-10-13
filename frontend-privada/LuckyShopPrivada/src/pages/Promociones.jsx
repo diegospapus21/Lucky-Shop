@@ -7,7 +7,7 @@ import '../SideBar.css'
 import '../productosPage.css'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
-const POR_PAGINA = 10
+const POR_PAGINA = 5
 
 // Da formato corto a una fecha (ej: "15 jul. 2026")
 const formatoFecha = (f) => (f ? new Date(f).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')

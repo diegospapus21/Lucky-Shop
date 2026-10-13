@@ -29,7 +29,7 @@
   /* 270px sidebar + 10px margin-left + 10px margin-right = 290px desde el borde */
   margin-left: 300px;
   /* padding-top alto para que el contenido no quede detrás de los iconos de notificación/perfil */
-  padding: 24px 40px 60px 40px;
+  padding: 24px 40px 40px 40px;
   min-height: 100vh;
   overflow-y: auto;
 }
@@ -41,7 +41,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .pm-title-wrap {
@@ -181,7 +181,7 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
 }
 
 .pm-cat-btn {
@@ -209,11 +209,17 @@
   border-color: #a3d9b3;
 }
 
-/* ── Grid de productos ── */
-.pm-grid {
+/* ════════════════════════════════════════════════════════════
+   GRID DE PRODUCTOS COMPACTO
+   2 filas de tarjetas + paginación caben sin hacer scroll.
+   (!important porque otra hoja de estilos de la página
+   de Productos redefine el tamaño de las tarjetas)
+   ════════════════════════════════════════════════════════════ */
+
+.pm-page .pm-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 16px !important;
 }
 
 /* ── Card ── */
@@ -232,17 +238,19 @@
   box-shadow: 0 10px 28px rgba(0,0,0,0.12);
 }
 
-.pm-card-img-wrap {
+/* La altura de la imagen se adapta a la altura de la pantalla */
+.pm-page .pm-card-img-wrap {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: clamp(110px, 17vh, 150px) !important;
+  aspect-ratio: auto !important;
   background: #f0f4f1;
   overflow: hidden;
 }
 
-.pm-card-img {
+.pm-page .pm-card-img {
   width: 100%;
-  height: 100%;
+  height: 100% !important;
   object-fit: cover;
   transition: transform 0.35s ease;
 }
@@ -288,25 +296,30 @@
   color: #92400e;
 }
 
-/* Info de la card */
-.pm-card-info {
-  padding: 14px 16px 8px;
+/* Info de la card: nombre arriba; precio y stock en la misma línea */
+.pm-page .pm-card-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 14px 8px !important;
   flex: 1;
 }
 
-.pm-card-nombre {
-  font-size: 0.93rem;
+.pm-page .pm-card-nombre {
+  width: 100%;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #1a2b1e;
-  margin: 0 0 6px;
-  line-height: 1.3;
+  margin: 0 !important;
+  line-height: 1.25;
 }
 
-.pm-card-precio {
-  font-size: 1.05rem;
+.pm-page .pm-card-precio {
+  font-size: 1rem;
   font-weight: 700;
   color: #1a2b1e;
-  margin: 0 0 6px;
+  margin: 0 !important;
 }
 
 .pm-card-stock {
@@ -320,11 +333,11 @@
 }
 
 /* Acciones card */
-.pm-card-actions {
+.pm-page .pm-card-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 14px;
+  padding: 6px 12px 10px !important;
   border-top: 1px solid #f0f4f1;
 }
 
@@ -382,7 +395,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 36px;
+  margin-top: 20px;
 }
 
 .pm-page-btn {
@@ -415,6 +428,14 @@
 .pm-page-btn:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* Contador "Mostrando 1–5 de X" (Promociones) */
+.pm-contador {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #5a7464;
 }
 
 /* ── Estados de carga / vacío ── */
@@ -1102,6 +1123,12 @@
 }
 
 /* ── Responsivo ── */
+@media (max-width: 1100px) {
+  .pm-page .pm-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
 @media (max-width: 900px) {
   .pm-main {
     padding: 24px 20px 40px;
@@ -1119,11 +1146,6 @@
 
   .pm-search-input {
     width: 100%;
-  }
-
-  .pm-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
   }
 
   .pm-detalles-modal,
@@ -1155,9 +1177,8 @@
   }
 }
 
-.pm-contador {
-  margin: 14px 0 0;
-  text-align: center;
-  font-size: 0.85rem;
-  color: #5a7464;
+@media (max-width: 800px) {
+  .pm-page .pm-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
