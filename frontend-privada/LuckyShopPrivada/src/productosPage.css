@@ -29,8 +29,9 @@
   /* 270px sidebar + 10px margin-left + 10px margin-right = 290px desde el borde */
   margin-left: 300px;
   /* padding-top alto para que el contenido no quede detrás de los iconos de notificación/perfil */
-  padding: 24px 40px 40px 40px;
+  padding: 20px 40px 16px 40px;
   min-height: 100vh;
+  box-sizing: border-box;
   overflow-y: auto;
 }
 
@@ -41,7 +42,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .pm-title-wrap {
@@ -181,7 +182,7 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .pm-cat-btn {
@@ -242,7 +243,7 @@
 .pm-page .pm-card-img-wrap {
   position: relative;
   width: 100%;
-  height: clamp(110px, 17vh, 150px) !important;
+  height: clamp(90px, 14vh, 125px) !important;
   aspect-ratio: auto !important;
   background: #f0f4f1;
   overflow: hidden;
@@ -302,7 +303,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  padding: 10px 14px 8px !important;
+  padding: 8px 14px 6px !important;
   flex: 1;
 }
 
@@ -337,7 +338,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px 10px !important;
+  padding: 4px 12px 8px !important;
   border-top: 1px solid #f0f4f1;
 }
 
@@ -395,17 +396,17 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .pm-page-btn {
   font-family: inherit;
-  min-width: 38px;
-  height: 38px;
+  min-width: 34px;
+  height: 34px;
   border: 1.5px solid #dde4de;
   background: #fff;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: #4a6352;
   cursor: pointer;
@@ -430,7 +431,7 @@
   cursor: default;
 }
 
-/* Contador "Mostrando 1–5 de X" (Promociones) */
+/* Contador "Mostrando 1–5 de X" (Promociones, Ventas) */
 .pm-contador {
   margin: 14px 0 0;
   text-align: center;
@@ -959,12 +960,8 @@
   margin-bottom: 24px;
 }
 
-/* ════════════════════════════════════════════════════════════
-   BUSCADOR DE PRODUCTOS CON SUGERENCIAS
-   (Bolsas de la Suerte y Promociones)
-   La lista ocupa espacio dentro del modal (no flota), así
-   nunca se sale de él.
-   ════════════════════════════════════════════════════════════ */
+/* BUSCADOR DE PRODUCTOS CON SUGERENCIAS
+   (Bolsas de la Suerte, Promociones y Videos combos) */
 
 .pm-buscador {
   width: 100%;
@@ -1094,7 +1091,7 @@
   background: rgba(255, 255, 255, 0.4);
 }
 
-/* Producto ya elegido (Promociones) */
+/* Producto o cliente ya elegido (Promociones, Videos combos) */
 .pm-producto-elegido {
   display: flex;
   align-items: center;
