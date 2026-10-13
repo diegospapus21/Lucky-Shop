@@ -261,6 +261,54 @@
   font-size: 0.95rem;
 }
 
+/* --- Contador y paginación --- */
+.clientes-contador {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #5a7464;
+}
+
+.clientes-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.clientes-pagina-btn {
+  font-family: 'Outfit', sans-serif;
+  min-width: 38px;
+  height: 38px;
+  border: 1.5px solid #dde4de;
+  background: #ffffff;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4a6352;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clientes-pagina-btn:hover:not(:disabled) {
+  border-color: #1a3d26;
+  color: #1a3d26;
+  background: #f0f7f2;
+}
+
+.clientes-pagina-btn.active {
+  background: #1a3d26;
+  color: #ffffff;
+  border-color: #1a3d26;
+  font-weight: 700;
+}
+
+.clientes-pagina-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* --- MODALES --- */
 .modal-overlay {
   position: fixed;
