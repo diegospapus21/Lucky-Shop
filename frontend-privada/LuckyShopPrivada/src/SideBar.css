@@ -13,7 +13,7 @@
 
   --text-primary: #ffffff;
   --text-muted: #83978b;
-  --text-hover: #00e676;
+  --text-hover: #fff;
   /* Glassmorphism & Bordes */
   --border-glass: 1px solid rgba(255, 255, 255, 0.06);
   --border-glow-green: 1px solid rgba(0, 230, 118, 0.2);
