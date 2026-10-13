@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useVentas } from '../hooks/useVentas'
 import Sidebar from "../components/SideBar";
 import Nav from "../components/Nav";
@@ -8,6 +8,9 @@ import '../ventasPage.css'
 import '../SideBar.css'
 
 const ESTADOS_FILTRO = ['Todos', 'Completado', 'Pendiente', 'Cancelado']
+
+// Cantidad de ventas que se muestran por página
+const POR_PAGINA = 5
 
 // Genera las iniciales (máx 2 letras) a partir de un nombre, para el avatar circular
 const iniciales = (nombre = '') =>
@@ -203,8 +206,7 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
 /* ────────────────────────────────────────────────────────── */
 const Ventas = () => {
   const {
-    ventas: ventasPaginaOriginal,
-    totalVentas,
+    ventas,
     loading,
     error,
     busqueda,
@@ -223,14 +225,14 @@ const Ventas = () => {
   const [modalEditar, setModalEditar] = useState(null)
   const [modalEliminar, setModalEliminar] = useState(null)
 
-  // CALCULAR EL MÉTODO MÁS USADO FILTRANDO VALORES VÁLIDOS DE PAGO (IGNORANDO ESTADOS)
+  // Método de pago más usado entre todas las ventas del filtro actual (ignorando estados)
   const metodoMasUsadoFiltrado = useMemo(() => {
-    if (!ventasPaginaOriginal || ventasPaginaOriginal.length === 0) return null
-    
+    if (!ventas || ventas.length === 0) return null
+
     const estadosInvalidos = ['pendiente', 'completado', 'cancelado', 'todos', '']
     const conteo = {}
 
-    ventasPaginaOriginal.forEach(v => {
+    ventas.forEach(v => {
       const metodoStr = v.metodoPago ? v.metodoPago.trim().toLowerCase() : ''
       if (metodoStr && !estadosInvalidos.includes(metodoStr)) {
         const metodoFormateado = metodoStr.charAt(0).toUpperCase() + metodoStr.slice(1)
@@ -240,17 +242,20 @@ const Ventas = () => {
 
     const metodosArray = Object.entries(conteo)
     if (metodosArray.length === 0) return null
-    
+
     metodosArray.sort((a, b) => b[1] - a[1])
     return { metodo: metodosArray[0][0], cantidad: metodosArray[0][1] }
-  }, [ventasPaginaOriginal])
+  }, [ventas])
 
-  // LIMITAR ESTRICTAMENTE A 4 ELEMENTOS POR PÁGINA EN FRONTEND
-  const ITEMS_POR_PAGINA = 4
-  const indiceUltimoItem = paginaActual * ITEMS_POR_PAGINA
-  const indicePrimerItem = indiceUltimoItem - ITEMS_POR_PAGINA
-  const ventasPagina = ventasPaginaOriginal.slice(indicePrimerItem, indiceUltimoItem)
-  const totalPaginas = Math.ceil(ventasPaginaOriginal.length / ITEMS_POR_PAGINA) || 1
+  // Paginación de la tabla de ventas
+  const totalPaginas = Math.max(1, Math.ceil(ventas.length / POR_PAGINA))
+  const inicio = (paginaActual - 1) * POR_PAGINA
+  const ventasPagina = ventas.slice(inicio, inicio + POR_PAGINA)
+
+  // Si al eliminar queda vacía la página actual, retrocede a la última disponible
+  useEffect(() => {
+    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
+  }, [totalPaginas, paginaActual, setPaginaActual])
 
   const handleGuardarEdicion = async (id, datos) => {
     try {
@@ -280,7 +285,7 @@ const Ventas = () => {
     <div className="pm-page">
       <Sidebar />
 
-      <main className="pm-main" style={{ overflowY: 'auto', maxHeight: '100vh', paddingBottom: '40px' }}>
+      <main className="pm-main">
         <Nav openNotifications={() => setNotifAbierta(true)} />
         <div className="pm-header">
           <div className="pm-title-wrap">
@@ -312,10 +317,7 @@ const Ventas = () => {
               <button
                 key={e}
                 className={`vt-filtro-tab ${filtroEstado === e ? 'activo' : ''}`}
-                onClick={() => {
-                  setFiltroEstado(e)
-                  setPaginaActual(1) // Regresar a la pág 1 al cambiar filtro
-                }}
+                onClick={() => setFiltroEstado(e)}
               >
                 {e}
               </button>
@@ -331,10 +333,7 @@ const Ventas = () => {
               className="pm-search-input"
               placeholder="Buscar"
               value={busqueda}
-              onChange={e => {
-                setBusqueda(e.target.value)
-                setPaginaActual(1) // Regresar a la pág 1 al buscar
-              }}
+              onChange={e => setBusqueda(e.target.value)}
             />
           </div>
         </div>
@@ -394,31 +393,42 @@ const Ventas = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
 
-            {/* Paginación de exactamente 4 por página */}
-            {!loading && ventasPaginaOriginal.length > 0 && (
-              <div className="vt-footer">
-                <span className="vt-footer-texto">
-                  Página {paginaActual} de {totalPaginas} ({ventasPaginaOriginal.length} ventas en total)
-                </span>
-                <div className="vt-footer-btns">
-                  <button
-                    className="vt-footer-btn"
-                    disabled={paginaActual === 1}
-                    onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    className="vt-footer-btn"
-                    disabled={paginaActual >= totalPaginas}
-                    onClick={() => setPaginaActual(p => p + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              </div>
-            )}
+        {/* Contador de resultados */}
+        {!loading && !error && ventas.length > 0 && (
+          <p className="pm-contador">
+            Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, ventas.length)} de {ventas.length} ventas
+          </p>
+        )}
+
+        {/* Paginación */}
+        {!loading && !error && totalPaginas > 1 && (
+          <div className="pm-pagination" style={{ marginTop: 12 }}>
+            <button
+              className="pm-page-btn"
+              disabled={paginaActual === 1}
+              onClick={() => setPaginaActual(p => p - 1)}
+            >
+              ‹
+            </button>
+            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                className={`pm-page-btn ${paginaActual === n ? 'active' : ''}`}
+                onClick={() => setPaginaActual(n)}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              className="pm-page-btn"
+              disabled={paginaActual === totalPaginas}
+              onClick={() => setPaginaActual(p => p + 1)}
+            >
+              ›
+            </button>
           </div>
         )}
       </main>

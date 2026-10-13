@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-const VENTAS_POR_PAGINA = 8;
 
 /**
  * Hook central de la sección Ventas.
- * Trae el listado desde el backend (con filtros de estado/búsqueda), pagina
- * los resultados, calcula el total y la mini gráfica, y expone editar/eliminar.
+ * Trae el listado desde el backend (con filtros de estado/búsqueda), calcula
+ * el total y la mini gráfica, y expone editar/eliminar.
+ * La paginación de la tabla se hace en la página (Ventas.jsx).
  */
 export function useVentas() {
   const [ventas, setVentas] = useState([]);
@@ -28,7 +28,6 @@ export function useVentas() {
       if (!res.ok) throw new Error("Error al obtener ventas");
       const data = await res.json();
       setVentas(Array.isArray(data) ? data : []);
-      setPaginaActual(1);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,6 +38,12 @@ export function useVentas() {
   useEffect(() => {
     fetchVentas();
   }, [fetchVentas]);
+
+  // Al cambiar el filtro o la búsqueda vuelve a la primera página
+  // (al editar o eliminar una venta se queda en la página actual)
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroEstado]);
 
   /* ── Totales y mini gráfica ── */
   const ventasTotales = useMemo(
@@ -60,27 +65,20 @@ export function useVentas() {
   }, [ventas]);
 
   const metodoMasUsado = useMemo(() => {
-  const mapa = new Map();
-  ventas.forEach((v) => {
-    const metodo = v.metodoPago?.trim();
-    if (!metodo) return;
-    mapa.set(metodo, (mapa.get(metodo) || 0) + 1);
-  });
+    const mapa = new Map();
+    ventas.forEach((v) => {
+      const metodo = v.metodoPago?.trim();
+      if (!metodo) return;
+      mapa.set(metodo, (mapa.get(metodo) || 0) + 1);
+    });
 
-  if (mapa.size === 0) return null;
+    if (mapa.size === 0) return null;
 
-  const [metodo, cantidad] = [...mapa.entries()].sort((a, b) => b[1] - a[1])[0];
-  return { metodo, cantidad };
-}, [ventas]);
+    const [metodo, cantidad] = [...mapa.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { metodo, cantidad };
+  }, [ventas]);
 
   const valorMaximoGrafica = Math.max(...datosGrafica.map((d) => d.valor), 1);
-
-  /* ── Paginación ── */
-  const totalPaginas = Math.ceil(ventas.length / VENTAS_POR_PAGINA);
-  const ventasPagina = ventas.slice(
-    (paginaActual - 1) * VENTAS_POR_PAGINA,
-    paginaActual * VENTAS_POR_PAGINA
-  );
 
   /* ── CRUD ── */
   const actualizarVenta = useCallback(async (id, datos) => {
@@ -104,7 +102,7 @@ export function useVentas() {
   }, [fetchVentas]);
 
   return {
-    ventas: ventasPagina,
+    ventas, // todas las ventas filtradas (la página las pagina)
     totalVentas: ventas.length,
     loading,
     error,
@@ -114,7 +112,6 @@ export function useVentas() {
     setFiltroEstado,
     paginaActual,
     setPaginaActual,
-    totalPaginas,
     ventasTotales,
     datosGrafica,
     metodoMasUsado,
