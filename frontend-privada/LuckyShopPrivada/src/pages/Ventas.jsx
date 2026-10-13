@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useVentas } from '../hooks/useVentas'
 import Sidebar from "../components/SideBar";
 import Nav from "../components/Nav";
@@ -34,11 +34,6 @@ const IconoBasura = () => (
     <path d="M19 6l-1 14H6L5 6" />
     <path d="M10 11v6M14 11v6" />
     <path d="M9 6V4h6v2" />
-  </svg>
-)
-const IconoFiltro = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
   </svg>
 )
 
@@ -148,7 +143,6 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
-  // Convierte el estado elegido (texto) a los dos booleanos que espera el backend
   const handleSubmit = () => {
     const estadoBooleanos = {
       Completado: { status: true, statusPago: true },
@@ -209,7 +203,7 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
 /* ────────────────────────────────────────────────────────── */
 const Ventas = () => {
   const {
-    ventas: ventasPagina,
+    ventas: ventasPaginaOriginal,
     totalVentas,
     loading,
     error,
@@ -219,23 +213,45 @@ const Ventas = () => {
     setFiltroEstado,
     paginaActual,
     setPaginaActual,
-    totalPaginas,
-    metodoMasUsado,
-    datosGrafica,
-    valorMaximoGrafica,
     fetchVentas,
     actualizarVenta,
     eliminarVenta,
   } = useVentas()
 
-  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
   const [notifAbierta, setNotifAbierta] = useState(false)
-
   const [modalDetalle, setModalDetalle] = useState(null)
   const [modalEditar, setModalEditar] = useState(null)
   const [modalEliminar, setModalEliminar] = useState(null)
 
-  /* ── CRUD ── */
+  // CALCULAR EL MÉTODO MÁS USADO FILTRANDO VALORES VÁLIDOS DE PAGO (IGNORANDO ESTADOS)
+  const metodoMasUsadoFiltrado = useMemo(() => {
+    if (!ventasPaginaOriginal || ventasPaginaOriginal.length === 0) return null
+    
+    const estadosInvalidos = ['pendiente', 'completado', 'cancelado', 'todos', '']
+    const conteo = {}
+
+    ventasPaginaOriginal.forEach(v => {
+      const metodoStr = v.metodoPago ? v.metodoPago.trim().toLowerCase() : ''
+      if (metodoStr && !estadosInvalidos.includes(metodoStr)) {
+        const metodoFormateado = metodoStr.charAt(0).toUpperCase() + metodoStr.slice(1)
+        conteo[metodoFormateado] = (conteo[metodoFormateado] || 0) + 1
+      }
+    })
+
+    const metodosArray = Object.entries(conteo)
+    if (metodosArray.length === 0) return null
+    
+    metodosArray.sort((a, b) => b[1] - a[1])
+    return { metodo: metodosArray[0][0], cantidad: metodosArray[0][1] }
+  }, [ventasPaginaOriginal])
+
+  // LIMITAR ESTRICTAMENTE A 4 ELEMENTOS POR PÁGINA EN FRONTEND
+  const ITEMS_POR_PAGINA = 4
+  const indiceUltimoItem = paginaActual * ITEMS_POR_PAGINA
+  const indicePrimerItem = indiceUltimoItem - ITEMS_POR_PAGINA
+  const ventasPagina = ventasPaginaOriginal.slice(indicePrimerItem, indiceUltimoItem)
+  const totalPaginas = Math.ceil(ventasPaginaOriginal.length / ITEMS_POR_PAGINA) || 1
+
   const handleGuardarEdicion = async (id, datos) => {
     try {
       await actualizarVenta(id, datos)
@@ -254,19 +270,17 @@ const Ventas = () => {
     }
   }
 
-  // Traduce el estado de la venta a la clase CSS del badge correspondiente
   const badgeClase = (estado) => ({
     Completado: 'completado',
     Pendiente: 'pendiente',
     Cancelado: 'cancelado',
   }[estado] || 'pendiente')
 
-  /* RENDER  */
   return (
     <div className="pm-page">
       <Sidebar />
 
-      <main className="pm-main">
+      <main className="pm-main" style={{ overflowY: 'auto', maxHeight: '100vh', paddingBottom: '40px' }}>
         <Nav openNotifications={() => setNotifAbierta(true)} />
         <div className="pm-header">
           <div className="pm-title-wrap">
@@ -276,48 +290,54 @@ const Ventas = () => {
           </div>
         </div>
 
-        {/* Tarjeta con el método de pago más usado (resumen rápido) */}
+        {/* Tarjeta con el método de pago más usado (dinámica según la pestaña/filtro) */}
         <div className="vt-stat-card">
-  <p className="vt-stat-label">Método más usado</p>
-  {metodoMasUsado ? (
-    <>
-      <p className="vt-metodo-destacado">{metodoMasUsado.metodo}</p>
-      <p className="vt-metodo-subtexto">
-        {metodoMasUsado.cantidad} pago{metodoMasUsado.cantidad !== 1 ? "s" : ""} realizado{metodoMasUsado.cantidad !== 1 ? "s" : ""} usando este método
-      </p>
-    </>
-  ) : (
-    <p className="vt-chart-empty">Todavía no hay ventas con método de pago registrado.</p>
-  )}
-</div>
+          <p className="vt-stat-label">Método más usado ({filtroEstado})</p>
+          {metodoMasUsadoFiltrado ? (
+            <>
+              <p className="vt-metodo-destacado">{metodoMasUsadoFiltrado.metodo}</p>
+              <p className="vt-metodo-subtexto">
+                {metodoMasUsadoFiltrado.cantidad} pago{metodoMasUsadoFiltrado.cantidad !== 1 ? "s" : ""} realizado{metodoMasUsadoFiltrado.cantidad !== 1 ? "s" : ""} usando este método
+              </p>
+            </>
+          ) : (
+            <p className="vt-chart-empty">No hay registros de métodos de pago válidos en este filtro.</p>
+          )}
+        </div>
 
-       {/* Filtros por estado (botones) + buscador */}
-       <div className="vt-toolbar">
-  <div className="vt-filtros-wrap">
-    {ESTADOS_FILTRO.map(e => (
-      <button
-        key={e}
-        className={`vt-filtro-tab ${filtroEstado === e ? 'activo' : ''}`}
-        onClick={() => setFiltroEstado(e)}
-      >
-        {e}
-      </button>
-    ))}
-  </div>
+        {/* Filtros y buscador */}
+        <div className="vt-toolbar">
+          <div className="vt-filtros-wrap">
+            {ESTADOS_FILTRO.map(e => (
+              <button
+                key={e}
+                className={`vt-filtro-tab ${filtroEstado === e ? 'activo' : ''}`}
+                onClick={() => {
+                  setFiltroEstado(e)
+                  setPaginaActual(1) // Regresar a la pág 1 al cambiar filtro
+                }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
 
-  <div className="pm-search-wrap" style={{ marginLeft: 'auto' }}>
-    <svg className="pm-search-icon" viewBox="0 0 24 24" fill="none">
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-      <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-    <input
-      className="pm-search-input"
-      placeholder="Buscar"
-      value={busqueda}
-      onChange={e => setBusqueda(e.target.value)}
-    />
-  </div>
-</div>
+          <div className="pm-search-wrap" style={{ marginLeft: 'auto' }}>
+            <svg className="pm-search-icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              className="pm-search-input"
+              placeholder="Buscar"
+              value={busqueda}
+              onChange={e => {
+                setBusqueda(e.target.value)
+                setPaginaActual(1) // Regresar a la pág 1 al buscar
+              }}
+            />
+          </div>
+        </div>
 
         {error && !loading && (
           <div className="pm-error">
@@ -375,23 +395,23 @@ const Ventas = () => {
               </tbody>
             </table>
 
-            {/* Paginación */}
-            {!loading && totalVentas > 0 && (
+            {/* Paginación de exactamente 4 por página */}
+            {!loading && ventasPaginaOriginal.length > 0 && (
               <div className="vt-footer">
                 <span className="vt-footer-texto">
-                  Mostrando {ventasPagina.length} de {totalVentas} ventas
+                  Página {paginaActual} de {totalPaginas} ({ventasPaginaOriginal.length} ventas en total)
                 </span>
                 <div className="vt-footer-btns">
                   <button
                     className="vt-footer-btn"
                     disabled={paginaActual === 1}
-                    onClick={() => setPaginaActual(p => p - 1)}
+                    onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
                   >
                     Anterior
                   </button>
                   <button
                     className="vt-footer-btn"
-                    disabled={paginaActual === totalPaginas}
+                    disabled={paginaActual >= totalPaginas}
                     onClick={() => setPaginaActual(p => p + 1)}
                   >
                     Siguiente
