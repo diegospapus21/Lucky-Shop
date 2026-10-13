@@ -1,5 +1,5 @@
 // PromocionesAdmin.jsx — gestión de promociones (admin)
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Sidebar from '../components/SideBar'
 import Nav from '../components/Nav'
 import NotificacionesModal from '../components/NotificationsModal'
@@ -8,9 +8,27 @@ import '../productosPage.css'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const POR_PAGINA = 5
+const FILTROS = ['Todas', 'Vigentes', 'No vigentes']
 
-// Da formato corto a una fecha (ej: "15 jul. 2026")
-const formatoFecha = (f) => (f ? new Date(f).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
+// Da formato corto a una fecha (ej: "15 jul. 2026") sin desfase de zona horaria
+const formatoFecha = (f) =>
+  f
+    ? new Date(f).toLocaleDateString('es-SV', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+    : '—'
+
+// Determina si una promoción está vigente hoy: activa y dentro del rango de fechas
+// (se compara por día para evitar desfases de zona horaria)
+const estaVigente = (p) => {
+  const hoy = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD en hora local
+  const inicio = new Date(p.fechaInicio).toISOString().slice(0, 10)
+  const fin = new Date(p.fechaFin).toISOString().slice(0, 10)
+  return p.estado === 'activa' && inicio <= hoy && fin >= hoy
+}
 
 // ── Helpers de producto (nombre, precio e imagen) ──
 const obtenerNombreProducto = (p) =>
@@ -313,6 +331,7 @@ const PromocionesAdmin = () => {
   const [error, setError] = useState('')
   const [notifAbierta, setNotifAbierta] = useState(false)
   const [paginaActual, setPaginaActual] = useState(1)
+  const [filtro, setFiltro] = useState('Todas') // Todas | Vigentes | No vigentes
 
   const [modalPromo, setModalPromo] = useState(null)      // null = cerrado, {} = crear, objeto = editar
   const [modalEliminar, setModalEliminar] = useState(null)
@@ -347,16 +366,45 @@ const PromocionesAdmin = () => {
     }
   }
 
-  // Determina si una promoción está vigente hoy: activa y dentro del rango de fechas
-  const estaVigente = (p) => {
-    const hoy = new Date()
-    return p.estado === 'activa' && new Date(p.fechaInicio) <= hoy && new Date(p.fechaFin) >= hoy
-  }
+  // Cantidad de promociones por pestaña
+  const conteos = useMemo(() => {
+    const vigentes = promociones.filter(estaVigente).length
+    return {
+      Todas: promociones.length,
+      Vigentes: vigentes,
+      'No vigentes': promociones.length - vigentes,
+    }
+  }, [promociones])
+
+  // Promociones según la pestaña elegida
+  const promocionesFiltradas = useMemo(() => {
+    if (filtro === 'Vigentes') return promociones.filter(estaVigente)
+    if (filtro === 'No vigentes') return promociones.filter((p) => !estaVigente(p))
+    return promociones
+  }, [promociones, filtro])
+
+  // Al cambiar de pestaña vuelve a la primera página
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [filtro])
 
   // Paginación de la tabla de promociones
-  const totalPaginas = Math.max(1, Math.ceil(promociones.length / POR_PAGINA))
+  const totalPaginas = Math.max(1, Math.ceil(promocionesFiltradas.length / POR_PAGINA))
   const inicio = (paginaActual - 1) * POR_PAGINA
-  const promocionesPagina = promociones.slice(inicio, inicio + POR_PAGINA)
+  const promocionesPagina = promocionesFiltradas.slice(inicio, inicio + POR_PAGINA)
+
+  // Si al eliminar queda vacía la página actual, retrocede a la última disponible
+  useEffect(() => {
+    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
+  }, [totalPaginas, paginaActual])
+
+  // Mensaje cuando no hay resultados en la pestaña elegida
+  const mensajeVacio =
+    promociones.length === 0
+      ? 'No hay promociones registradas'
+      : filtro === 'Vigentes'
+      ? 'No hay promociones vigentes'
+      : 'No hay promociones no vigentes'
 
   return (
     <div className="pm-page">
@@ -378,6 +426,21 @@ const PromocionesAdmin = () => {
             </button>
           </div>
         </div>
+
+        {/* PESTAÑAS: Todas / Vigentes / No vigentes */}
+        {!loading && !error && (
+          <div className="pm-categorias">
+            {FILTROS.map((f) => (
+              <button
+                key={f}
+                className={`pm-cat-btn ${filtro === f ? 'active' : ''}`}
+                onClick={() => setFiltro(f)}
+              >
+                {f} ({conteos[f]})
+              </button>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div className="pm-error">
@@ -407,36 +470,47 @@ const PromocionesAdmin = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {promociones.length === 0 ? (
-                    <tr><td colSpan={6} className="empty-cell">No hay promociones registradas</td></tr>
+                  {promocionesFiltradas.length === 0 ? (
+                    <tr><td colSpan={6} className="empty-cell">{mensajeVacio}</td></tr>
                   ) : (
-                    promocionesPagina.map((p) => (
-                      <tr key={p._id}>
-                        <td>{p.idProducto?.nombre || 'Producto eliminado'}</td>
-                        <td>-{p.descuento}%</td>
-                        <td>{formatoFecha(p.fechaInicio)}</td>
-                        <td>{formatoFecha(p.fechaFin)}</td>
-                        <td>
-                          <span className={`vt-badge ${estaVigente(p) ? 'completado' : 'cancelado'}`}>
-                            {estaVigente(p) ? 'Vigente' : 'No vigente'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="vt-acciones">
-                            <button className="vt-icon-btn editar" title="Editar" onClick={() => setModalPromo(p)}>
-                              ✏
-                            </button>
-                            <button className="vt-icon-btn eliminar" title="Eliminar" onClick={() => setModalEliminar(p)}>
-                              🗑
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    promocionesPagina.map((p) => {
+                      const vigente = estaVigente(p)
+
+                      return (
+                        <tr key={p._id}>
+                          <td>{p.idProducto?.nombre || 'Producto eliminado'}</td>
+                          <td>-{p.descuento}%</td>
+                          <td>{formatoFecha(p.fechaInicio)}</td>
+                          <td>{formatoFecha(p.fechaFin)}</td>
+                          <td>
+                            <span className={`vt-badge ${vigente ? 'completado' : 'cancelado'}`}>
+                              {vigente ? 'Vigente' : 'No vigente'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="vt-acciones">
+                              <button className="vt-icon-btn editar" title="Editar" onClick={() => setModalPromo(p)}>
+                                ✏
+                              </button>
+                              <button className="vt-icon-btn eliminar" title="Eliminar" onClick={() => setModalEliminar(p)}>
+                                🗑
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* CONTADOR DE RESULTADOS */}
+            {promocionesFiltradas.length > 0 && (
+              <p className="pm-contador">
+                Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, promocionesFiltradas.length)} de {promocionesFiltradas.length} promociones
+              </p>
+            )}
 
             {/* PAGINACIÓN */}
             {totalPaginas > 1 && (
