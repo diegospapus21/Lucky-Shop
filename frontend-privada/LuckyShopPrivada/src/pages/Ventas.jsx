@@ -10,7 +10,7 @@ import '../SideBar.css'
 const ESTADOS_FILTRO = ['Todos', 'Completado', 'Pendiente', 'Cancelado']
 
 // Cantidad de ventas que se muestran por página
-const POR_PAGINA = 5
+const POR_PAGINA = 4
 
 // Genera las iniciales (máx 2 letras) a partir de un nombre, para el avatar circular
 const iniciales = (nombre = '') =>
