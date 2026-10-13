@@ -10,7 +10,7 @@ import '../clientes.css'
 const DIAS_ACTIVIDAD = 30 
 
 // Cantidad de clientes que se muestran por página
-const POR_PAGINA = 5
+const POR_PAGINA = 4
 
 // Extrae las iniciales del nombre y apellido para el avatar
 const getInitials = (name = '', lastName = '') => {
