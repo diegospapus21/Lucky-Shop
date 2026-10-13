@@ -86,8 +86,8 @@ const VideoModal = ({ combo, onClose }) => {
   )
 }
 
-/* Modal: detalles + acciones de aceptar/denegar */
-const DetalleModal = ({ combo, onClose, onAceptar, onDenegar }) => {
+/* Modal: detalles del combo (solo lectura; el cliente es quien acepta o rechaza el video) */
+const DetalleModal = ({ combo, onClose }) => {
   if (!combo) return null
   const { label, clase } = getStatusInfo(combo.status)
 
@@ -106,14 +106,6 @@ const DetalleModal = ({ combo, onClose, onAceptar, onDenegar }) => {
           <div className="vc-detalle-val">{formatFecha(combo.createdAt)}</div>
         </div>
         <div className="vc-detalle-row">
-          <div className="vc-detalle-label">Dirección</div>
-          <div className="vc-detalle-val">{combo.direccion || '—'}</div>
-        </div>
-        <div className="vc-detalle-row">
-          <div className="vc-detalle-label">Tipo</div>
-          <div className="vc-detalle-val">{combo.idProducto?.nombre || '—'}</div>
-        </div>
-        <div className="vc-detalle-row">
           <div className="vc-detalle-label">Estado actual</div>
           <div className="vc-detalle-val">
             <span className={`vc-badge ${clase}`}>
@@ -125,16 +117,6 @@ const DetalleModal = ({ combo, onClose, onAceptar, onDenegar }) => {
 
         <div className="vc-detalle-actions">
           <button className="vc-btn-cerrar" onClick={onClose}>Cerrar</button>
-          {combo.status !== false && (
-            <button className="vc-btn-denegar" onClick={() => { onDenegar(combo._id); onClose() }}>
-              Denegar
-            </button>
-          )}
-          {combo.status !== true && (
-            <button className="vc-btn-aceptar" onClick={() => { onAceptar(combo._id); onClose() }}>
-              Aceptar
-            </button>
-          )}
         </div>
       </div>
     </div>
@@ -337,7 +319,6 @@ const VideosCombos = () => {
     setFiltroStatus,
     fetchCombos,
     crearCombo,
-    actualizarStatus,
     eliminarCombo,
   } = useVideosCombos()
 
@@ -348,16 +329,6 @@ const VideosCombos = () => {
   const [modalNuevo, setModalNuevo] = useState(false)
 
   /* Acciones CRUD */
-  const handleAceptar = async (id) => {
-    try { await actualizarStatus(id, true) }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
-  const handleDenegar = async (id) => {
-    try { await actualizarStatus(id, false) }
-    catch (err) { alert('Error: ' + err.message) }
-  }
-
   const handleEliminar = async () => {
     try {
       await eliminarCombo(modalEliminar._id)
@@ -525,8 +496,6 @@ const VideosCombos = () => {
         <DetalleModal
           combo={modalDetalle}
           onClose={() => setModalDetalle(null)}
-          onAceptar={handleAceptar}
-          onDenegar={handleDenegar}
         />
       )}
 
