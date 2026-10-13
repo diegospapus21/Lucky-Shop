@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import Sidebar from '../components/SideBar'
 import Nav from '../components/Nav'
 import NotificacionesModal from '../components/NotificationsModal'
@@ -8,6 +8,9 @@ import '../clientes.css'
 
 // Límite de días sin ingresar para considerar a un cliente como activo
 const DIAS_ACTIVIDAD = 30 
+
+// Cantidad de clientes que se muestran por página
+const POR_PAGINA = 5
 
 // Extrae las iniciales del nombre y apellido para el avatar
 const getInitials = (name = '', lastName = '') => {
@@ -47,6 +50,22 @@ const Clientes = () => {
   const [clienteVer, setClienteVer] = useState(null)
   const [clienteEliminar, setClienteEliminar] = useState(null)
   const [notifAbierta, setNotifAbierta] = useState(false)
+  const [paginaActual, setPaginaActual] = useState(1)
+
+  // Al buscar, vuelve a la primera página
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [busqueda])
+
+  // Paginación de la tabla de clientes
+  const totalPaginas = Math.max(1, Math.ceil(clientesFiltrados.length / POR_PAGINA))
+  const inicio = (paginaActual - 1) * POR_PAGINA
+  const clientesPagina = clientesFiltrados.slice(inicio, inicio + POR_PAGINA)
+
+  // Si al eliminar queda vacía la página actual, retrocede a la última disponible
+  useEffect(() => {
+    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
+  }, [totalPaginas, paginaActual])
 
   // Función memorizada para procesar la eliminación y cerrar el modal
   const handleEliminarCliente = useCallback(async (id) => {
@@ -108,8 +127,8 @@ const Clientes = () => {
                   <td colSpan="5" className="empty-cell">No se encontraron clientes</td>
                 </tr>
               ) : (
-                /* Mapeo de la lista de clientes utilizando el subcomponente ClienteRow */
-                clientesFiltrados.map(cliente => (
+                /* Mapeo de los clientes de la página actual utilizando el subcomponente ClienteRow */
+                clientesPagina.map(cliente => (
                   <ClienteRow 
                     key={cliente._id} 
                     cliente={cliente} 
@@ -121,6 +140,42 @@ const Clientes = () => {
             </tbody>
           </table>
         </section>
+
+        {/* Contador de resultados */}
+        {!loading && clientesFiltrados.length > 0 && (
+          <p className="clientes-contador">
+            Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, clientesFiltrados.length)} de {clientesFiltrados.length} clientes
+          </p>
+        )}
+
+        {/* Paginación */}
+        {!loading && totalPaginas > 1 && (
+          <div className="clientes-paginacion">
+            <button
+              className="clientes-pagina-btn"
+              disabled={paginaActual === 1}
+              onClick={() => setPaginaActual(p => p - 1)}
+            >
+              ‹
+            </button>
+            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                className={`clientes-pagina-btn ${paginaActual === n ? 'active' : ''}`}
+                onClick={() => setPaginaActual(n)}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              className="clientes-pagina-btn"
+              disabled={paginaActual === totalPaginas}
+              onClick={() => setPaginaActual(p => p + 1)}
+            >
+              ›
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Rendering condicional de modales */}
