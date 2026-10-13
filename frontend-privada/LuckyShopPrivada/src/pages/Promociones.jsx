@@ -7,7 +7,7 @@ import '../SideBar.css'
 import '../productosPage.css'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
-const POR_PAGINA = 5
+const POR_PAGINA = 8
 const FILTROS = ['Todas', 'Vigentes', 'No vigentes']
 
 // Da formato corto a una fecha (ej: "15 jul. 2026") sin desfase de zona horaria
