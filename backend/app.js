@@ -37,18 +37,31 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Orígenes permitidos para la app web
-const webOrigins = ["http://localhost:5173", "http://localhost:5174", 'https://lucky-shop-la3y.vercel.app','https://lucky-shop-peach.vercel.app'];
+const webOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://lucky-shop-la3y.vercel.app",
+  "https://lucky-shop-peach.vercel.app",
+  "https://lucky-shop-pied.vercel.app",
+];
 
 // Configuración de CORS para permitir peticiones desde el frontend
 app.use(cors({
   origin: (origin, callback) => {
-    // Permite peticiones sin origen (como móvil o Postman) o si está en la lista
-    if (!origin || webOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    // Permite peticiones sin origen (como móvil o Postman), orígenes permitidos o subdominios de vercel
+    if (
+      !origin ||
+      webOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin)
+    ) {
       return callback(null, true);
     }
     return callback(new Error('No permitido por CORS'));
   },
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
 }));
 
 // Middlewares globales

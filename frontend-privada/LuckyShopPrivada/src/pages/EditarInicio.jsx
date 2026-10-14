@@ -24,8 +24,13 @@ import {
   FaTrashAlt,
   FaQuoteRight,
 } from "react-icons/fa";
+import portadaJoyas from "../assets/portadaJoyas.jpg";
 
-const RAW_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const RAW_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? "https://lucky-shop-3.onrender.com/api"
+    : "http://localhost:4000/api");
 const BASE_URL = RAW_URL.replace(/\/+$/, "");
 
 const DEFAULT_BANNER = {
@@ -73,6 +78,7 @@ export default function EditarInicio() {
 
   // Estado de la sección de bienvenida
   const [tituloBienvenida, setTituloBienvenida] = useState(DEFAULT_BIENVENIDA.titulo);
+  const [contenidoHtml, setContenidoHtml] = useState(DEFAULT_BIENVENIDA.contenidoHtml);
   const [pestanaActiva, setPestanaActiva] = useState("editor"); // 'editor' | 'preview'
 
   const editorRef = useRef(null);
@@ -104,29 +110,30 @@ export default function EditarInicio() {
             setTituloBienvenida(
               data.bienvenida.titulo || DEFAULT_BIENVENIDA.titulo
             );
+            const htmlRecibido =
+              data.bienvenida.contenidoHtml || DEFAULT_BIENVENIDA.contenidoHtml;
+            setContenidoHtml(htmlRecibido);
             if (editorRef.current) {
-              editorRef.current.innerHTML =
-                data.bienvenida.contenidoHtml || DEFAULT_BIENVENIDA.contenidoHtml;
+              editorRef.current.innerHTML = htmlRecibido;
             }
           }
         }
       }
     } catch (err) {
       console.error("Error al cargar configuración:", err);
-      if (editorRef.current) {
-        editorRef.current.innerHTML = DEFAULT_BIENVENIDA.contenidoHtml;
-      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Asignar el contenido inicial al editor cuando termine la carga
+  // Mantener sincronizado el editor cuando termine de cargar o se cambie a la pestaña editor
   useEffect(() => {
-    if (!loading && editorRef.current && !editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = DEFAULT_BIENVENIDA.contenidoHtml;
+    if (!loading && pestanaActiva === "editor" && editorRef.current) {
+      if (editorRef.current.innerHTML !== contenidoHtml) {
+        editorRef.current.innerHTML = contenidoHtml;
+      }
     }
-  }, [loading]);
+  }, [loading, pestanaActiva]);
 
   // Guardar y restaurar rango de selección del texto
   const guardarSeleccion = () => {
@@ -257,6 +264,14 @@ export default function EditarInicio() {
     }
   };
 
+  // Cambiar de pestaña conservando el contenido del editor
+  const handleCambiarPestana = (nuevaPestana) => {
+    if (editorRef.current) {
+      setContenidoHtml(editorRef.current.innerHTML);
+    }
+    setPestanaActiva(nuevaPestana);
+  };
+
   // Confirmar restablecer desde el modal personalizado
   const confirmarRestablecer = () => {
     setLinea1(DEFAULT_BANNER.linea1);
@@ -264,6 +279,7 @@ export default function EditarInicio() {
     setColorTexto(DEFAULT_BANNER.colorTexto);
     setColorFondo(DEFAULT_BANNER.colorFondo);
     setTituloBienvenida(DEFAULT_BIENVENIDA.titulo);
+    setContenidoHtml(DEFAULT_BIENVENIDA.contenidoHtml);
     handleQuitarImagen();
     if (editorRef.current) {
       editorRef.current.innerHTML = DEFAULT_BIENVENIDA.contenidoHtml;
@@ -278,7 +294,10 @@ export default function EditarInicio() {
     setMensajeError("");
 
     try {
-      const contenidoHtml = editorRef.current ? editorRef.current.innerHTML : "";
+      const htmlParaGuardar = editorRef.current
+        ? editorRef.current.innerHTML
+        : contenidoHtml;
+      setContenidoHtml(htmlParaGuardar);
 
       const formData = new FormData();
       formData.append("linea1", linea1);
@@ -286,7 +305,7 @@ export default function EditarInicio() {
       formData.append("colorTexto", colorTexto);
       formData.append("colorFondo", colorFondo);
       formData.append("tituloBienvenida", tituloBienvenida);
-      formData.append("contenidoHtml", contenidoHtml);
+      formData.append("contenidoHtml", htmlParaGuardar);
 
       if (archivoImagen) {
         formData.append("imagen", archivoImagen);
@@ -400,13 +419,13 @@ export default function EditarInicio() {
         <div className="pestanas-editor">
           <button
             className={`pestana-btn ${pestanaActiva === "editor" ? "activa" : ""}`}
-            onClick={() => setPestanaActiva("editor")}
+            onClick={() => handleCambiarPestana("editor")}
           >
             <FaPalette /> Editor Visual
           </button>
           <button
             className={`pestana-btn ${pestanaActiva === "preview" ? "activa" : ""}`}
-            onClick={() => setPestanaActiva("preview")}
+            onClick={() => handleCambiarPestana("preview")}
           >
             <FaEye /> Vista Previa en Vivo
           </button>
@@ -435,7 +454,7 @@ export default function EditarInicio() {
                   backgroundColor: colorFondo,
                   backgroundImage: bannerFondoActual
                     ? `linear-gradient(90deg, rgba(251,194,212,0.35) 0%, rgba(251,194,212,0.05) 45%, rgba(255,255,255,0) 70%), url(${bannerFondoActual})`
-                    : `linear-gradient(90deg, rgba(251,194,212,0.35) 0%, rgba(251,194,212,0.05) 45%, rgba(255,255,255,0) 70%), url('/src/assets/portadaJoyas.jpg')`,
+                    : `linear-gradient(90deg, rgba(251,194,212,0.35) 0%, rgba(251,194,212,0.05) 45%, rgba(255,255,255,0) 70%), url(${portadaJoyas})`,
                 }}
               >
                 <div className="banner-preview-textos">
@@ -809,11 +828,18 @@ export default function EditarInicio() {
                     suppressContentEditableWarning
                     spellCheck="true"
                     data-placeholder="Escribe el texto de bienvenida aquí..."
+                    onInput={(e) => setContenidoHtml(e.currentTarget.innerHTML)}
                     onKeyDown={handleKeyDownEditor}
-                    onKeyUp={guardarSeleccion}
+                    onKeyUp={() => {
+                      guardarSeleccion();
+                      if (editorRef.current) setContenidoHtml(editorRef.current.innerHTML);
+                    }}
                     onMouseUp={guardarSeleccion}
                     onSelect={guardarSeleccion}
-                    onBlur={guardarSeleccion}
+                    onBlur={() => {
+                      guardarSeleccion();
+                      if (editorRef.current) setContenidoHtml(editorRef.current.innerHTML);
+                    }}
                   />
                 </div>
               </div>
@@ -835,7 +861,7 @@ export default function EditarInicio() {
                 backgroundColor: colorFondo,
                 backgroundImage: bannerFondoActual
                   ? `linear-gradient(90deg, rgba(251,194,212,0.35) 0%, rgba(251,194,212,0.05) 45%, rgba(255,255,255,0) 70%), url(${bannerFondoActual})`
-                  : `linear-gradient(90deg, rgba(251,194,212,0.35) 0%, rgba(251,194,212,0.05) 45%, rgba(255,255,255,0) 70%), url('/src/assets/portadaJoyas.jpg')`,
+                  : `linear-gradient(90deg, rgba(251,194,212,0.35) 0%, rgba(251,194,212,0.05) 45%, rgba(255,255,255,0) 70%), url(${portadaJoyas})`,
               }}
             >
               <div className="preview-banner-contenido">
@@ -856,9 +882,7 @@ export default function EditarInicio() {
               <div
                 className="preview-bienvenida-cuerpo"
                 dangerouslySetInnerHTML={{
-                  __html: editorRef.current
-                    ? editorRef.current.innerHTML
-                    : DEFAULT_BIENVENIDA.contenidoHtml,
+                  __html: contenidoHtml || DEFAULT_BIENVENIDA.contenidoHtml,
                 }}
               />
             </section>

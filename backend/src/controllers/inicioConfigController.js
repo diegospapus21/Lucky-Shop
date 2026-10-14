@@ -1,14 +1,28 @@
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import mongoose from "mongoose";
+import { v2 as cloudinary } from "cloudinary";
 import InicioConfig from "../models/inicioConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_FILE = path.join(__dirname, "../data/inicioConfig.json");
 
-const inicioConfigController = {};
+const DEFAULT_CONFIG = {
+  banner: {
+    linea1: "Joyas que hablan de ti",
+    linea2: "sin decir una palabra",
+    imagenUrl: "",
+    imagenPublicId: "",
+    colorTexto: "#4B1010",
+    colorFondo: "#fbc2d4",
+  },
+  bienvenida: {
+    titulo: "Bienvenido a tu lugar de confianza",
+    contenidoHtml:
+      "<p>A un espacio donde cada pieza cuenta una historia: la tuya.</p><p>No son simples accesorios; diseñamos pequeños fragmentos de luz hechos para perdurar, celebrar tus logros y acompañarte en cada paso. Desde el minimalismo que te eleva en el día a día hasta la sofisticación de tus noches más especiales.</p><p>Descubre una colección pensada para reflejar tu fuerza, tu elegancia y tu esencia única. Encuentra hoy esa pieza que se convertirá en parte de ti.</p>",
+  },
+};
 
 // Helper para leer del archivo JSON local de respaldo
 async function leerArchivoRespaldo() {
@@ -16,69 +30,36 @@ async function leerArchivoRespaldo() {
     const data = await fs.readFile(DATA_FILE, "utf-8");
     return JSON.parse(data);
   } catch {
-    return {
-      banner: {
-        linea1: "Joyas que hablan de ti",
-        linea2: "sin decir una palabra",
-        imagenUrl: "",
-        imagenPublicId: "",
-        colorTexto: "#4B1010",
-        colorFondo: "#fbc2d4",
-      },
-      bienvenida: {
-        titulo: "Bienvenido a tu lugar de confianza",
-        contenidoHtml:
-          "<p>A un espacio donde cada pieza cuenta una historia: la tuya.</p><p>No son simples accesorios; diseñamos pequeños fragmentos de luz hechos para perdurar, celebrar tus logros y acompañarte en cada paso. Desde el minimalismo que te eleva en el día a día hasta la sofisticación de tus noches más especiales.</p><p>Descubre una colección pensada para reflejar tu fuerza, tu elegancia y tu esencia única. Encuentra hoy esa pieza que se convertirá en parte de ti.</p>",
-      },
-    };
+    return DEFAULT_CONFIG;
   }
 }
 
-// Helper para escribir en el archivo JSON local de respaldo
+// Helper para escribir en el archivo JSON local de respaldo (silencioso en entornos read-only)
 async function guardarArchivoRespaldo(data) {
   try {
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Error al guardar archivo local de respaldo:", err);
+  } catch {
+    // Si el entorno es read-only (como Vercel o contenedor efímero), no bloquea la ejecución
   }
 }
 
-// Helper con timeout para operaciones de Mongoose
-function conTimeout(promesa, ms = 4000) {
-  return Promise.race([
-    promesa,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Tiempo de espera agotado")), ms)
-    ),
-  ]);
-}
+const inicioConfigController = {};
 
 // GET - Obtener la configuración actual del inicio
 inicioConfigController.getInicioConfig = async (req, res) => {
   try {
-    if (mongoose.connection.readyState === 1) {
-      try {
-        let config = await conTimeout(InicioConfig.findOne(), 4000);
-        if (!config) {
-          const respaldo = await leerArchivoRespaldo();
-          config = await conTimeout(InicioConfig.create(respaldo), 4000);
-        }
-        if (config) {
-          return res.status(200).json({
-            banner: config.banner,
-            bienvenida: config.bienvenida,
-          });
-        }
-      } catch (dbErr) {
-        console.warn("MongoDB lento o error, usando respaldo local:", dbErr.message);
-      }
+    let config = await InicioConfig.findOne().lean();
+    if (!config) {
+      const respaldo = await leerArchivoRespaldo();
+      config = await InicioConfig.create(respaldo);
     }
-
-    const localData = await leerArchivoRespaldo();
-    return res.status(200).json(localData);
+    return res.status(200).json({
+      banner: config.banner || DEFAULT_CONFIG.banner,
+      bienvenida: config.bienvenida || DEFAULT_CONFIG.bienvenida,
+    });
   } catch (error) {
-    console.error("getInicioConfig error:", error);
+    console.error("getInicioConfig error, usando respaldo:", error);
     const localData = await leerArchivoRespaldo();
     return res.status(200).json(localData);
   }
@@ -97,88 +78,74 @@ inicioConfigController.updateInicioConfig = async (req, res) => {
       eliminarImagen,
     } = req.body;
 
-    // Obtener estado base (desde Mongo si está listo, o respaldo local)
-    let datosActuales = null;
-    let mongoDoc = null;
-
-    if (mongoose.connection.readyState === 1) {
-      try {
-        mongoDoc = await conTimeout(InicioConfig.findOne(), 4000);
-        if (mongoDoc) {
-          datosActuales = {
-            banner: {
-              linea1: mongoDoc.banner?.linea1,
-              linea2: mongoDoc.banner?.linea2,
-              imagenUrl: mongoDoc.banner?.imagenUrl || "",
-              imagenPublicId: mongoDoc.banner?.imagenPublicId || "",
-              colorTexto: mongoDoc.banner?.colorTexto,
-              colorFondo: mongoDoc.banner?.colorFondo,
-            },
-            bienvenida: {
-              titulo: mongoDoc.bienvenida?.titulo,
-              contenidoHtml: mongoDoc.bienvenida?.contenidoHtml,
-            },
-          };
-        }
-      } catch (e) {
-        console.warn("No se pudo leer Mongo para base:", e.message);
-      }
+    // Obtener o inicializar configuración en MongoDB
+    let configActual = await InicioConfig.findOne();
+    if (!configActual) {
+      configActual = await InicioConfig.create(DEFAULT_CONFIG);
     }
 
-    if (!datosActuales) {
-      datosActuales = await leerArchivoRespaldo();
-    }
+    const bannerUpdates = {};
+    if (linea1 !== undefined) bannerUpdates["banner.linea1"] = linea1;
+    if (linea2 !== undefined) bannerUpdates["banner.linea2"] = linea2;
+    if (colorTexto !== undefined) bannerUpdates["banner.colorTexto"] = colorTexto;
+    if (colorFondo !== undefined) bannerUpdates["banner.colorFondo"] = colorFondo;
 
-    if (linea1 !== undefined) datosActuales.banner.linea1 = linea1;
-    if (linea2 !== undefined) datosActuales.banner.linea2 = linea2;
-    if (colorTexto !== undefined) datosActuales.banner.colorTexto = colorTexto;
-    if (colorFondo !== undefined) datosActuales.banner.colorFondo = colorFondo;
+    const bienvenidaUpdates = {};
+    if (tituloBienvenida !== undefined) bienvenidaUpdates["bienvenida.titulo"] = tituloBienvenida;
+    if (contenidoHtml !== undefined) bienvenidaUpdates["bienvenida.contenidoHtml"] = contenidoHtml;
 
-    if (tituloBienvenida !== undefined) {
-      datosActuales.bienvenida.titulo = tituloBienvenida;
-    }
-    if (contenidoHtml !== undefined) {
-      datosActuales.bienvenida.contenidoHtml = contenidoHtml;
-    }
-
+    // Manejo de imagen en Cloudinary
     if (req.file) {
-      datosActuales.banner.imagenUrl = req.file.path;
-      datosActuales.banner.imagenPublicId = req.file.filename || "";
-    } else if (eliminarImagen === "true" || eliminarImagen === true) {
-      datosActuales.banner.imagenUrl = "";
-      datosActuales.banner.imagenPublicId = "";
-    }
-
-    // 1. Guardar de forma inmediata en el archivo local persistente
-    await guardarArchivoRespaldo(datosActuales);
-
-    // 2. Guardar en MongoDB esperando confirmación (si está conectado)
-    if (mongoose.connection.readyState === 1) {
-      try {
-        if (!mongoDoc) {
-          mongoDoc = await conTimeout(InicioConfig.findOne(), 4000);
+      // Eliminar imagen anterior de Cloudinary si existía
+      if (configActual.banner?.imagenPublicId) {
+        try {
+          await cloudinary.uploader.destroy(configActual.banner.imagenPublicId);
+        } catch (e) {
+          console.warn("No se pudo eliminar la imagen previa en Cloudinary:", e);
         }
-        if (!mongoDoc) {
-          await conTimeout(InicioConfig.create(datosActuales), 5000);
-        } else {
-          mongoDoc.banner = { ...mongoDoc.banner, ...datosActuales.banner };
-          mongoDoc.bienvenida = { ...mongoDoc.bienvenida, ...datosActuales.bienvenida };
-          mongoDoc.markModified("banner");
-          mongoDoc.markModified("bienvenida");
-          await conTimeout(mongoDoc.save(), 5000);
-        }
-      } catch (mongoErr) {
-        console.warn("Error al guardar en MongoDB (respaldo local guardado OK):", mongoErr.message);
       }
+      bannerUpdates["banner.imagenUrl"] = req.file.path;
+      bannerUpdates["banner.imagenPublicId"] = req.file.filename || "";
+    } else if (eliminarImagen === "true" || eliminarImagen === true) {
+      if (configActual.banner?.imagenPublicId) {
+        try {
+          await cloudinary.uploader.destroy(configActual.banner.imagenPublicId);
+        } catch (e) {
+          console.warn("No se pudo eliminar la imagen en Cloudinary:", e);
+        }
+      }
+      bannerUpdates["banner.imagenUrl"] = "";
+      bannerUpdates["banner.imagenPublicId"] = "";
     }
+
+    const updateFields = {
+      ...bannerUpdates,
+      ...bienvenidaUpdates,
+    };
+
+    const docActualizado = await InicioConfig.findByIdAndUpdate(
+      configActual._id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+
+    const respuestaConfig = {
+      banner: docActualizado.banner,
+      bienvenida: docActualizado.bienvenida,
+    };
+
+    // Actualizar respaldo local en segundo plano
+    guardarArchivoRespaldo(respuestaConfig).catch(() => {});
 
     return res.status(200).json({
       message: "Configuración de inicio actualizada con éxito",
-      config: datosActuales,
+      config: respuestaConfig,
     });
   } catch (error) {
     console.error("updateInicioConfig error:", error);
-    return res.status(500).json({ message: "Error al actualizar la configuración de inicio" });
+    return res.status(500).json({
+      message: "Error al actualizar la configuración de inicio: " + error.message,
+    });
   }
 };
 

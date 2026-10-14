@@ -6,7 +6,11 @@ import Footer from '../components/Footer.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import portadaJoyas from '../assets/portadaJoyas.jpg'
 
-const RAW_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+const RAW_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? 'https://lucky-shop-3.onrender.com/api'
+    : 'http://localhost:4000/api')
 const BASE_URL = RAW_URL.replace(/\/+$/, '')
 
 const HomeCliente = () => {
