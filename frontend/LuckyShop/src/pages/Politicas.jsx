@@ -1,6 +1,7 @@
 //Pagina de Politicas.jsx - Pagina donde se encuentran los terminos y condiciones 
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
+import BotonVolver from "../components/BotonVolver.jsx";
 import Logo from "../assets/icons8-trébol-50.png"
 
 // Estilos en línea usados en toda la página de Políticas
@@ -14,6 +15,10 @@ const styles = {
   mainContainer: {
     flex: 1,
     padding: "40px 60px",
+  },
+  // Contenedor del botón para regresar al inicio
+  volverWrapper: {
+    marginBottom: "20px",
   },
   // Tarjeta gris que contiene todo el texto de los términos y condiciones
   card: {
@@ -95,6 +100,11 @@ export default function Politicas() {
       <Navbar />
 
       <div style={styles.mainContainer}>
+        {/* Flecha para regresar al inicio */}
+        <div style={styles.volverWrapper}>
+          <BotonVolver />
+        </div>
+
         <div style={styles.card}>
           {/* Título principal con el ícono de trébol */}
           <div style={styles.headerWrapper}>

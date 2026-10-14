@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
+import BotonVolver from "../components/BotonVolver.jsx";
 
 // Estilos en línea (objeto de estilos) usados en toda la página de Contáctanos
 const styles = {
@@ -11,6 +12,10 @@ const styles = {
     backgroundColor: "#fff",
     display: "flex",
     flexDirection: "column",
+  },
+  // Contenedor del botón para regresar al inicio
+  volverWrapper: {
+    padding: "24px 60px 0",
   },
   header: {
     padding: "40px 60px 10px",
@@ -332,6 +337,11 @@ export default function ContactPage() {
   return (
     <div style={styles.page}>
       <Navbar />
+
+      {/* Flecha para regresar al inicio */}
+      <div style={styles.volverWrapper}>
+        <BotonVolver />
+      </div>
 
       {/* Encabezado con línea inferior */}
         <div style={styles.header}>
