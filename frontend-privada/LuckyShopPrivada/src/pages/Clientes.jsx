@@ -7,7 +7,7 @@ import '../SideBar.css'
 import '../clientes.css'
 
 // Límite de días sin ingresar para considerar a un cliente como activo
-const DIAS_ACTIVIDAD = 30 
+const DIAS_ACTIVIDAD = 30
 
 // Cantidad de clientes que se muestran por página
 const POR_PAGINA = 4
@@ -29,11 +29,39 @@ const estaActivo = (ultimoAcceso) => {
 // Da formato legible a la fecha del último acceso
 const formatoUltimoAcceso = (fecha) => {
   if (!fecha) return 'Nunca'
-  return new Date(fecha).toLocaleDateString('es-SV', { 
-    day: '2-digit', 
-    month: 'short', 
-    year: 'numeric' 
+  return new Date(fecha).toLocaleDateString('es-SV', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
   })
+}
+
+// Avatar: muestra la foto de perfil (Cloudinary) y, si no hay o falla, las iniciales
+const Avatar = ({ cliente }) => {
+  const [error, setError] = useState(false)
+  const foto = cliente.profileImage
+
+  // Si cambia la foto, se vuelve a intentar cargarla
+  useEffect(() => {
+    setError(false)
+  }, [foto])
+
+  if (foto && !error) {
+    return (
+      <img
+        className="cliente-avatar cliente-avatar-img"
+        src={foto}
+        alt={cliente.name || 'Cliente'}
+        onError={() => setError(true)}
+      />
+    )
+  }
+
+  return (
+    <div className="cliente-avatar">
+      {getInitials(cliente.name, cliente.lastName)}
+    </div>
+  )
 }
 
 const Clientes = () => {
@@ -79,7 +107,7 @@ const Clientes = () => {
 
       <main className="clientes-content-area">
         <Nav openNotifications={() => setNotifAbierta(true)} />
-        
+
         {/* Encabezado de la página */}
         <header className="clientes-header">
           <h1 className="clientes-title">Clientes</h1>
@@ -127,13 +155,12 @@ const Clientes = () => {
                   <td colSpan="5" className="empty-cell">No se encontraron clientes</td>
                 </tr>
               ) : (
-                /* Mapeo de los clientes de la página actual utilizando el subcomponente ClienteRow */
                 clientesPagina.map(cliente => (
-                  <ClienteRow 
-                    key={cliente._id} 
-                    cliente={cliente} 
-                    onVer={setClienteVer} 
-                    onEliminar={setClienteEliminar} 
+                  <ClienteRow
+                    key={cliente._id}
+                    cliente={cliente}
+                    onVer={setClienteVer}
+                    onEliminar={setClienteEliminar}
                   />
                 ))
               )}
@@ -201,7 +228,6 @@ const Clientes = () => {
 
 // Componente para renderizar la fila individual de un cliente
 const ClienteRow = ({ cliente, onVer, onEliminar }) => {
-  // Cálculo memorizado del estado activo/inactivo para evitar reevaluaciones en cada render
   const activo = useMemo(() => estaActivo(cliente.ultimoAcceso), [cliente.ultimoAcceso])
   const nombreCompleto = `${cliente.name || ''} ${cliente.lastName || ''}`.trim() || 'Sin nombre'
 
@@ -209,9 +235,7 @@ const ClienteRow = ({ cliente, onVer, onEliminar }) => {
     <tr className="cliente-row">
       <td>
         <div className="cliente-nombre-cell">
-          <div className="cliente-avatar">
-            {getInitials(cliente.name, cliente.lastName)}
-          </div>
+          <Avatar cliente={cliente} />
           <span className="cliente-nombre">{nombreCompleto}</span>
         </div>
       </td>
@@ -264,6 +288,9 @@ const VerClienteModal = ({ cliente, onClose }) => {
           <button className="modal-close-btn" onClick={onClose}>×</button>
         </div>
         <div className="modal-form">
+          <div className="modal-avatar-row">
+            <Avatar cliente={cliente} />
+          </div>
           <div className="form-row">
             <div className="form-group">
               <label>Nombre</label>

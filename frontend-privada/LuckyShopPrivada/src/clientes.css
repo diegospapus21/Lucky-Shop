@@ -506,3 +506,21 @@
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(255, 59, 143, 0.4);
 }
+
+.cliente-avatar-img {
+  object-fit: cover;
+  background: none;
+  flex-shrink: 0;
+}
+
+.modal-avatar-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.modal-avatar-row .cliente-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 1.5rem;
+}

@@ -40,7 +40,6 @@ loginClientesController.login = async (req, res) => {
       if (clienteFound.loginAttemps >= 5) {
         clienteFound.timeOut = Date.now() + 5 * 60 * 1000;
         clienteFound.loginAttemps = 0;
-        clienteFound.ultimoAcceso = new Date();   // registra la fecha de este login
 
         await clienteFound.save();
 
@@ -51,13 +50,14 @@ loginClientesController.login = async (req, res) => {
 
       await clienteFound.save();
 
-      return res.status(401).json({message: "Contraseña incorrecta"})
-
+      return res.status(401).json({ message: "Contraseña incorrecta" });
     }
-    
 
+    // Login exitoso: se resetean los intentos y se registra la fecha de último acceso
     clienteFound.loginAttemps = 0;
     clienteFound.timeOut = null;
+    clienteFound.ultimoAcceso = new Date();
+    await clienteFound.save();
 
     // Si "recordarme" está marcado, la sesión dura 30 días; si no, solo 1 día.
     //Esto es para cuando el cliente marque "Recordar contraseña se guarde"
@@ -73,7 +73,7 @@ loginClientesController.login = async (req, res) => {
     // FIX: Configuración de la cookie obligatoria para Vercel / Producción
     const isProduction = process.env.NODE_ENV === 'production';
 
-    res.cookie("authCookie", token, { 
+    res.cookie("authCookie", token, {
       maxAge: maxAgeMs,
       httpOnly: true,
       secure: isProduction,               // 'true' en producción (HTTPS obligatorio)
@@ -122,6 +122,19 @@ loginClientesController.checkSession = async (req, res) => {
 
     if (!clienteFound) {
       return res.status(401).json({ message: "No autenticado" });
+    }
+
+    // Si el cliente tiene la sesión abierta (cookie de 30 días) y no vuelve a
+    // hacer login, actualizamos su último acceso aquí, máximo una vez por hora
+    const UNA_HORA = 60 * 60 * 1000;
+    if (
+      !clienteFound.ultimoAcceso ||
+      Date.now() - new Date(clienteFound.ultimoAcceso).getTime() > UNA_HORA
+    ) {
+      await cleintesModel.updateOne(
+        { _id: clienteFound._id },
+        { ultimoAcceso: new Date() },
+      );
     }
 
     return res.status(200).json({

@@ -18,6 +18,8 @@ const clienteSchema = new Schema(
     isVerified: { type: Boolean }, //Si la cuenta está verificada
     loginAttemps: { type: Number }, //Intentos de login fallidos
     timeOut: { type: Date }, //Fecha de bloqueo temporal
+    ultimoAcceso: { type: Date,
+     default: null }, // Última vez que el cliente entró al sitio
   },
   {
     timestamps: true,
