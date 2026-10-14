@@ -69,6 +69,11 @@ app.use(limiter); // Aplica el límite de peticiones
 app.use(cookieParser()); // Parsea las cookies de las peticiones
 app.use(express.json()); // Permite recibir y enviar JSON en el cuerpo de las peticiones
 
+// Endpoint de verificación de estado y versión desplegada
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", version: "v2-inicio-bolsas", timestamp: new Date() });
+});
+
 // Definición de las rutas
 app.use("/api/loginAdmin", loginAdminRoutes);
 app.use("/api/loginClientes", loginClientesRoutes);
