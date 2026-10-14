@@ -56,7 +56,7 @@ bolsasController.insertBolsas = async (req, res) => {
       return res.status(400).json({ message: "Stock inválido" });
     }
 
-    if (cantidadUnidades !== undefined && (isNaN(cantidadUnidades) || Number(cantidadUnidades) < 1)) {
+    if (cantidadUnidades && cantidadUnidades !== '' && (isNaN(Number(cantidadUnidades)) || Number(cantidadUnidades) < 1)) {
       return res.status(400).json({ message: "Cantidad de unidades inválida (debe ser al menos 1)" });
     }
 
@@ -75,7 +75,7 @@ bolsasController.insertBolsas = async (req, res) => {
     try {
       if (productos) productosParsed = JSON.parse(productos);
       else if (productosSeleccionados) productosParsed = JSON.parse(productosSeleccionados);
-    } catch { /* no es JSON válido, ignorar */ }
+    } catch (e) { /* no es JSON válido, ignorar */ }
 
     const newBolsa = new bolsasModel({
       nombre,
@@ -128,7 +128,7 @@ bolsasController.updateBolsas = async (req, res) => {
       return res.status(400).json({ message: "Precio inválido" });
     }
 
-    if (cantidadUnidades !== undefined && (isNaN(cantidadUnidades) || Number(cantidadUnidades) < 1)) {
+    if (cantidadUnidades && cantidadUnidades !== '' && (isNaN(Number(cantidadUnidades)) || Number(cantidadUnidades) < 1)) {
       return res.status(400).json({ message: "Cantidad de unidades inválida (debe ser al menos 1)" });
     }
 
@@ -159,7 +159,7 @@ bolsasController.updateBolsas = async (req, res) => {
     try {
       if (productos) updateData.productos = JSON.parse(productos);
       else if (productosSeleccionados) updateData.productos = JSON.parse(productosSeleccionados);
-    } catch { /* no es JSON válido, ignorar */ }
+    } catch (e) { /* no es JSON válido, ignorar */ }
 
     if (cantidadUnidades !== undefined) {
       updateData.cantidadUnidades = Number(cantidadUnidades);
