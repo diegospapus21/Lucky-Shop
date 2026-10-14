@@ -340,29 +340,10 @@ const FormModal = ({
 
   const handleCantidadUnidades = e => {
     const value = e.target.value
-
-    if (value === '') {
-      setForm(prev => ({ ...prev, cantidadUnidades: '' }))
-      return
-    }
-
-    const cantidad = Number(value)
-
-    if (cantidad < 1) return
-
-    setForm(prev => {
-      let seleccionados = [...prev.productosSeleccionados]
-
-      if (seleccionados.length > cantidad) {
-        seleccionados = seleccionados.slice(0, cantidad)
-      }
-
-      return {
-        ...prev,
-        cantidadUnidades: cantidad,
-        productosSeleccionados: seleccionados
-      }
-    })
+    setForm(prev => ({
+      ...prev,
+      cantidadUnidades: value
+    }))
   }
 
   // ==========================================================
@@ -371,37 +352,27 @@ const FormModal = ({
 
   const handleProductoSeleccionado = producto => {
     const idProducto = String(producto._id)
-
     const actuales = form.productosSeleccionados
-
     const existe = actuales.some(
       item => String(item?._id || item) === idProducto
     )
 
     // Quitar
     if (existe) {
-      setForm(prev => {
-        const nuevosSeleccionados = prev.productosSeleccionados.filter(
+      setForm(prev => ({
+        ...prev,
+        productosSeleccionados: prev.productosSeleccionados.filter(
           item => String(item?._id || item) !== idProducto
-        );
-        return {
-          ...prev,
-          productosSeleccionados: nuevosSeleccionados,
-          cantidadUnidades: Math.max(nuevosSeleccionados.length, 1)
-        };
-      });
-      return;
+        )
+      }))
+      return
     }
 
-    // Agregar (incrementa automáticamente la cantidad unitaria si ya se alcanzó para no bloquear al usuario)
-    const limiteActual = Number(form.cantidadUnidades) || 0;
-    const nuevaCantidad = actuales.length >= limiteActual ? actuales.length + 1 : limiteActual;
-
+    // Agregar sin restricciones
     setForm(prev => ({
       ...prev,
-      cantidadUnidades: nuevaCantidad,
       productosSeleccionados: [...prev.productosSeleccionados, producto]
-    }));
+    }))
   }
 
   // ==========================================================
@@ -476,13 +447,7 @@ const FormModal = ({
     }
 
     const seleccionados = form.productosSeleccionados.length
-
-    if (seleccionados < 1) {
-      alert('Debes seleccionar al menos 1 producto para la bolsa.')
-      return
-    }
-
-    const cantidad = seleccionados;
+    const cantidad = Number(form.cantidadUnidades) || seleccionados || 1
 
     onConfirmRequest({
       form: {
@@ -612,12 +577,10 @@ const FormModal = ({
             {/* CONTADOR */}
 
             <div className="pm-product-counter">
-              <span>Productos seleccionados</span>
+              <span>Productos seleccionados:</span>
 
               <strong>
                 {form.productosSeleccionados.length}
-                {' / '}
-                {form.cantidadUnidades}
               </strong>
             </div>
 
