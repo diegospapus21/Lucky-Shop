@@ -144,6 +144,7 @@ loginClientesController.checkSession = async (req, res) => {
         email: clienteFound.email,
         name: clienteFound.name,
         lastName: clienteFound.lastName,
+        profileImage: clienteFound.profileImage || "",
       },
     });
   } catch (error) {

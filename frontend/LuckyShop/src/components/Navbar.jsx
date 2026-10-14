@@ -228,7 +228,15 @@ const Navbar = () => {
                   aria-expanded={menuPerfilAbierto}
                   aria-haspopup="true"
                 >
-                  <UserIcon />
+                  {cliente.profileImage ? (
+                    <img
+                      src={cliente.profileImage}
+                      alt={nombreCompleto}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-pink-200"
+                    />
+                  ) : (
+                    <UserIcon />
+                  )}
                   <span className="hidden md:inline text-sm">{cliente.name || cliente.email}</span>
                 </button>
 
@@ -237,8 +245,16 @@ const Navbar = () => {
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-pink-100 py-3 z-50 animate-[slideDown_0.15s_ease]">
                     {/* Encabezado con avatar + datos del usuario */}
                     <div className="flex items-center gap-3 px-4 pb-3">
-                      <div className="w-11 h-11 rounded-full bg-pink-100 border border-pink-200 flex items-center justify-center text-pink-600 font-bold text-lg flex-shrink-0">
-                        {inicial}
+                      <div className="w-11 h-11 rounded-full bg-pink-100 border border-pink-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {cliente.profileImage ? (
+                          <img
+                            src={cliente.profileImage}
+                            alt={nombreCompleto}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-pink-600 font-bold text-lg">{inicial}</span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-gray-800 truncate">{nombreCompleto}</p>
@@ -375,6 +391,33 @@ const Navbar = () => {
               </li>
             ))}
           </ul>
+
+          {/* Sección de perfil en móvil (si hay sesión activa) */}
+          {cliente && (
+            <div className="px-4 py-3 border-b border-white/50">
+              <Link
+                to="/perfil"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3"
+              >
+                <div className="w-10 h-10 rounded-full bg-pink-100 border border-pink-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {cliente.profileImage ? (
+                    <img
+                      src={cliente.profileImage}
+                      alt={nombreCompleto}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-pink-600 font-bold">{inicial}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-800 text-sm truncate">{nombreCompleto}</p>
+                  <p className="text-xs text-gray-500 truncate">{cliente.email}</p>
+                </div>
+              </Link>
+            </div>
+          )}
 
           {/* Botones de login/registro (solo si no hay sesión activa) */}
           {!cliente && (
