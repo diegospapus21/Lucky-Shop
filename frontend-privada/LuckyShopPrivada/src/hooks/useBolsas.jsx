@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+const RAW_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? 'https://lucky-shop-3.onrender.com/api'
+    : 'http://localhost:4000/api');
+const BASE_URL = RAW_URL.replace(/\/+$/, '');
 const BOLSAS_POR_PAGINA = 8;
 
 /**
@@ -41,13 +46,23 @@ export function useBolsas() {
   const guardarBolsa = useCallback(async ({ form, imageFile, bolsaId }) => {
     const esEditar = !!bolsaId;
     const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+    Object.entries(form).forEach(([k, v]) => {
+      if (k === 'productos' || k === 'productosSeleccionados') {
+        // Enviar arreglo limpio en formato JSON
+        fd.append(k, JSON.stringify(v));
+      } else {
+        fd.append(k, v);
+      }
+    });
     if (imageFile) fd.append("imagenes", imageFile);
 
     const url = esEditar ? `${BASE_URL}/bolsas/${bolsaId}` : `${BASE_URL}/bolsas`;
     const method = esEditar ? "PUT" : "POST";
     const res = await fetch(url, { method, body: fd });
-    if (!res.ok) throw new Error("Error en la operación");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || "Error en la operación");
+    }
     await fetchBolsas();
     return esEditar;
   }, [fetchBolsas]);

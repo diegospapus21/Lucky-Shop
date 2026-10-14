@@ -56,8 +56,8 @@ bolsasController.insertBolsas = async (req, res) => {
       return res.status(400).json({ message: "Stock inválido" });
     }
 
-    if (cantidadUnidades !== undefined && ![6, 10].includes(Number(cantidadUnidades))) {
-      return res.status(400).json({ message: "Cantidad de unidades inválida" });
+    if (cantidadUnidades !== undefined && (isNaN(cantidadUnidades) || Number(cantidadUnidades) < 1)) {
+      return res.status(400).json({ message: "Cantidad de unidades inválida (debe ser al menos 1)" });
     }
 
     // Procesar imágenes subidas con multer + cloudinary
@@ -118,8 +118,8 @@ bolsasController.updateBolsas = async (req, res) => {
       return res.status(400).json({ message: "Precio inválido" });
     }
 
-    if (cantidadUnidades !== undefined && ![6, 10].includes(Number(cantidadUnidades))) {
-      return res.status(400).json({ message: "Cantidad de unidades inválida" });
+    if (cantidadUnidades !== undefined && (isNaN(cantidadUnidades) || Number(cantidadUnidades) < 1)) {
+      return res.status(400).json({ message: "Cantidad de unidades inválida (debe ser al menos 1)" });
     }
 
     // Combinar imágenes existentes conservadas + nuevas subidas

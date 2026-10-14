@@ -9,7 +9,7 @@ const bolsasSchema = new Schema(
     stock: { type: Number, required: true, min: 0, default: 0 }, //Cantidad disponible en inventario
     descripcion: { type: String, trim: true }, //Descripción detallada
     categoria: { type: String, trim: true, default: "" }, //Categoría a la que pertenece
-    cantidadUnidades: { type: Number, enum: [6, 10], default: 6 }, //Cantidad de productos que incluye (6 o 10)
+    cantidadUnidades: { type: Number, min: 1, default: 6 }, //Cantidad de productos que incluye
     imagenes: { type: [String], default: [] }, //Arreglo con URLs de las imágenes
     imagenPresentacion: { type: String, default: "" }, //URL de la imagen principal
     estado: {

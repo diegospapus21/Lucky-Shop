@@ -11,7 +11,12 @@ import '../productosPage.css'
 // CONFIGURACIÓN
 // ============================================================
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+const RAW_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD
+    ? 'https://lucky-shop-3.onrender.com/api'
+    : 'http://localhost:4000/api');
+const BASE_URL = RAW_URL.replace(/\/+$/, '');
 
 const ESTADOS = ['activo', 'inactivo', 'agotado']
 
@@ -252,7 +257,7 @@ const FormModal = ({
   onClose,
   onConfirmRequest
 }) => {
-  const cantidadInicial = bolsa?.cantidadUnidades || 1
+  const cantidadInicial = bolsa?.cantidadUnidades || 6
 
   const productosIniciales = Array.isArray(bolsa?.productos)
     ? bolsa.productos
@@ -375,28 +380,28 @@ const FormModal = ({
 
     // Quitar
     if (existe) {
-      setForm(prev => ({
-        ...prev,
-        productosSeleccionados: prev.productosSeleccionados.filter(
+      setForm(prev => {
+        const nuevosSeleccionados = prev.productosSeleccionados.filter(
           item => String(item?._id || item) !== idProducto
-        )
-      }))
-      return
+        );
+        return {
+          ...prev,
+          productosSeleccionados: nuevosSeleccionados,
+          cantidadUnidades: Math.max(nuevosSeleccionados.length, 1)
+        };
+      });
+      return;
     }
 
-    // No permitir superar la cantidad definida
-    if (actuales.length >= Number(form.cantidadUnidades)) {
-      alert(
-        `No puedes seleccionar más de ${form.cantidadUnidades} productos.`
-      )
-      return
-    }
+    // Agregar (incrementa automáticamente la cantidad unitaria si ya se alcanzó para no bloquear al usuario)
+    const limiteActual = Number(form.cantidadUnidades) || 0;
+    const nuevaCantidad = actuales.length >= limiteActual ? actuales.length + 1 : limiteActual;
 
-    // Agregar
     setForm(prev => ({
       ...prev,
+      cantidadUnidades: nuevaCantidad,
       productosSeleccionados: [...prev.productosSeleccionados, producto]
-    }))
+    }));
   }
 
   // ==========================================================
@@ -470,26 +475,14 @@ const FormModal = ({
       return
     }
 
-    const cantidad = Number(form.cantidadUnidades)
-
-    if (!cantidad || cantidad < 1) {
-      alert('Debes ingresar una cantidad válida mayor a 0.')
-      return
-    }
-
     const seleccionados = form.productosSeleccionados.length
 
-    if (seleccionados > cantidad) {
-      alert(`No puedes tener más de ${cantidad} productos.`)
+    if (seleccionados < 1) {
+      alert('Debes seleccionar al menos 1 producto para la bolsa.')
       return
     }
 
-    if (seleccionados !== cantidad) {
-      alert(
-        `Debes seleccionar exactamente ${cantidad} productos. Actualmente tienes ${seleccionados}.`
-      )
-      return
-    }
+    const cantidad = seleccionados;
 
     onConfirmRequest({
       form: {
