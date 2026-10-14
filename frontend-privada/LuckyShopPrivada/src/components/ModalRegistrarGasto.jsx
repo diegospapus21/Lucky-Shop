@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "./ModalRegistrarGasto.css";
 
 // Estado inicial del formulario para cuando se registra un nuevo gasto
 const VALORES_INICIALES = { cantidadGasto: "", descripcionGasto: "", fechaGasto: "" };
@@ -7,7 +8,7 @@ const VALORES_INICIALES = { cantidadGasto: "", descripcionGasto: "", fechaGasto:
 export default function ModalRegistrarGasto({ abierto, gasto, onCerrar, onGuardar, error }) {
   // Estado local para los campos del formulario
   const [form, setForm] = useState(VALORES_INICIALES);
-  
+
   // Determina si el modal está en modo edición o creación
   const esEditar = !!gasto;
 
@@ -39,22 +40,22 @@ export default function ModalRegistrarGasto({ abierto, gasto, onCerrar, onGuarda
   };
 
   return (
-    // Fondo oscuro que cubre la pantalla
-    <div className="modal-fondo">
+    // Fondo oscuro que cubre la pantalla (al hacer clic fuera se cierra)
+    <div className="gasto-fondo" onClick={onCerrar}>
       {/* Contenedor principal del modal */}
-      <div className="modal-panel mediano">
+      <div className="gasto-panel" onClick={(e) => e.stopPropagation()}>
         {/* Título dinámico según la acción */}
-        <h2 className="modal-titulo">{esEditar ? "Editar gasto" : "Registrar gasto"}</h2>
+        <h2 className="gasto-titulo">{esEditar ? "Editar gasto" : "Registrar gasto"}</h2>
 
         {/* Formulario de registro/edición */}
-        <form onSubmit={manejarGuardar} className="modal-form una-columna">
+        <form onSubmit={manejarGuardar} className="gasto-form">
           {/* Campo de ingreso del monto */}
-          <div>
-            <label className="modal-campo-label">Monto del gasto</label>
-            <div className="modal-precio-input">
+          <div className="gasto-campo">
+            <label className="gasto-label">Monto del gasto</label>
+            <div className="gasto-precio">
               <span>$</span>
               <input
-                className="modal-input"
+                className="gasto-input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -67,10 +68,10 @@ export default function ModalRegistrarGasto({ abierto, gasto, onCerrar, onGuarda
           </div>
 
           {/* Campo de descripción opcional */}
-          <div>
-            <label className="modal-campo-label">Descripción</label>
+          <div className="gasto-campo">
+            <label className="gasto-label">Descripción</label>
             <input
-              className="modal-input"
+              className="gasto-input"
               value={form.descripcionGasto}
               onChange={(e) => actualizar("descripcionGasto", e.target.value)}
               placeholder="Ej. Compra de insumos"
@@ -78,10 +79,10 @@ export default function ModalRegistrarGasto({ abierto, gasto, onCerrar, onGuarda
           </div>
 
           {/* Campo de selección de fecha */}
-          <div>
-            <label className="modal-campo-label">Fecha</label>
+          <div className="gasto-campo">
+            <label className="gasto-label">Fecha</label>
             <input
-              className="modal-input"
+              className="gasto-input"
               type="date"
               value={form.fechaGasto}
               onChange={(e) => actualizar("fechaGasto", e.target.value)}
@@ -90,14 +91,14 @@ export default function ModalRegistrarGasto({ abierto, gasto, onCerrar, onGuarda
           </div>
 
           {/* Muestra mensaje de error en caso de existir */}
-          {error && <p className="modal-error">{error}</p>}
+          {error && <p className="gasto-error">{error}</p>}
 
           {/* Botones de acción del formulario */}
-          <div className="modal-acciones">
-            <button type="button" className="modal-boton-secundario" onClick={onCerrar}>
+          <div className="gasto-acciones">
+            <button type="button" className="gasto-boton-secundario" onClick={onCerrar}>
               Cancelar
             </button>
-            <button type="submit" className="modal-boton-primario">
+            <button type="submit" className="gasto-boton-primario">
               {esEditar ? "Guardar cambios" : "Guardar gasto"}
             </button>
           </div>

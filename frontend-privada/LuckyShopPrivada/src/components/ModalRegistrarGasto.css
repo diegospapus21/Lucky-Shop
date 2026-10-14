@@ -1,0 +1,136 @@
+/* Fondo oscuro que cubre toda la pantalla */
+.gasto-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 35, 25, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+/* Caja blanca del modal */
+.gasto-panel {
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+.gasto-titulo {
+  margin: 0 0 20px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1f3a2a;
+}
+
+/* Campos en una sola columna con espacio entre ellos */
+.gasto-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gasto-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gasto-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5f52;
+}
+
+.gasto-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1px solid #d6e0d9;
+  border-radius: 10px;
+  background: #f8faf8;
+  font: inherit;
+  font-size: 0.95rem;
+  color: #1f3a2a;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.gasto-input::placeholder {
+  color: #9aaba0;
+}
+
+.gasto-input:focus {
+  border-color: #5aa06c;
+  box-shadow: 0 0 0 3px rgba(90, 160, 108, 0.18);
+}
+
+/* Campo de monto con el símbolo $ al lado */
+.gasto-precio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gasto-precio span {
+  font-weight: 700;
+  color: #1f3a2a;
+}
+
+.gasto-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecf1;
+  color: #c2275f;
+  font-size: 0.85rem;
+}
+
+/* Botones separados y alineados a la derecha */
+.gasto-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.gasto-boton-secundario,
+.gasto-boton-primario {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.05s;
+}
+
+.gasto-boton-secundario {
+  background: #fff;
+  color: #4a5f52;
+  border: 1px solid #d6e0d9;
+}
+
+.gasto-boton-secundario:hover {
+  background: #f1f5f2;
+}
+
+.gasto-boton-primario {
+  background: #5aa06c;
+  color: #fff;
+  border: 1px solid #5aa06c;
+}
+
+.gasto-boton-primario:hover {
+  background: #4a8c5c;
+}
+
+.gasto-boton-primario:active {
+  transform: scale(0.98);
+}
