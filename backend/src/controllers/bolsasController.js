@@ -39,7 +39,7 @@ bolsasController.getBolsaById = async (req, res) => {
 //POST - Insertar una nueva bolsa con sus imágenes
 bolsasController.insertBolsas = async (req, res) => {
   try {
-    let { nombre, precio, stock, descripcion, categoria, cantidadUnidades, estado } = req.body;
+    let { nombre, precio, stock, descripcion, categoria, cantidadUnidades, estado, productos, productosSeleccionados } = req.body;
 
     nombre = nombre?.trim();
     if (!nombre || precio === undefined || stock === undefined) {
@@ -70,6 +70,13 @@ bolsasController.insertBolsas = async (req, res) => {
 
     const imagenPresentacion = imagenes[0] || "";
 
+    // Parsear productos si viene como JSON string
+    let productosParsed = [];
+    try {
+      if (productos) productosParsed = JSON.parse(productos);
+      else if (productosSeleccionados) productosParsed = JSON.parse(productosSeleccionados);
+    } catch { /* no es JSON válido, ignorar */ }
+
     const newBolsa = new bolsasModel({
       nombre,
       precio: Number(precio),
@@ -80,6 +87,7 @@ bolsasController.insertBolsas = async (req, res) => {
       imagenes,
       imagenPresentacion,
       estado: estado || "activo",
+      productos: productosParsed,
     });
 
     await newBolsa.save();
@@ -104,6 +112,8 @@ bolsasController.updateBolsas = async (req, res) => {
       cantidadUnidades,
       estado,
       imagenesExistentes, // URLs que ya existen y el usuario quiere conservar
+      productos,
+      productosSeleccionados,
     } = req.body;
 
     nombre = nombre?.trim();
@@ -144,6 +154,12 @@ bolsasController.updateBolsas = async (req, res) => {
       categoria,
       estado,
     };
+
+    // Parsear productos si viene como JSON string
+    try {
+      if (productos) updateData.productos = JSON.parse(productos);
+      else if (productosSeleccionados) updateData.productos = JSON.parse(productosSeleccionados);
+    } catch { /* no es JSON válido, ignorar */ }
 
     if (cantidadUnidades !== undefined) {
       updateData.cantidadUnidades = Number(cantidadUnidades);

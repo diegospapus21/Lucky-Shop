@@ -368,7 +368,12 @@ const FormModal = ({
       return
     }
 
-    // Agregar sin restricciones
+    // Agregar solo si no at limit
+    const limite = Number(form.cantidadUnidades) || 0;
+    if (limite > 0 && actuales.length >= limite) {
+      return; // Ya tiene la cantidad máxima
+    }
+
     setForm(prev => ({
       ...prev,
       productosSeleccionados: [...prev.productosSeleccionados, producto]
@@ -446,8 +451,18 @@ const FormModal = ({
       return
     }
 
+    const cantidad = Number(form.cantidadUnidades) || 0
     const seleccionados = form.productosSeleccionados.length
-    const cantidad = Number(form.cantidadUnidades) || seleccionados || 1
+
+    if (cantidad < 1) {
+      alert('Debes ingresar una cantidad unitaria de al menos 1.')
+      return
+    }
+
+    if (seleccionados !== cantidad) {
+      alert(`Debes seleccionar exactamente ${cantidad} producto(s). Actualmente tienes ${seleccionados}.`)
+      return
+    }
 
     onConfirmRequest({
       form: {
@@ -568,19 +583,48 @@ const FormModal = ({
                 name="cantidadUnidades"
                 min="1"
                 value={form.cantidadUnidades}
-                onChange={handleCantidadUnidades}
+                onChange={e => {
+                  const val = e.target.value;
+                  const num = Number(val);
+                  setForm(prev => {
+                    let nuevosProductos = prev.productosSeleccionados;
+                    // Si se reduce la cantidad, recortar los productos seleccionados
+                    if (num > 0 && nuevosProductos.length > num) {
+                      nuevosProductos = nuevosProductos.slice(0, num);
+                    }
+                    return {
+                      ...prev,
+                      cantidadUnidades: val,
+                      productosSeleccionados: nuevosProductos
+                    };
+                  });
+                }}
                 className="pm-input"
-                placeholder="Ej. 10"
+                placeholder="Ej. 5"
               />
             </div>
 
             {/* CONTADOR */}
 
-            <div className="pm-product-counter">
+            <div className="pm-product-counter" style={{
+              background: (() => {
+                const limite = Number(form.cantidadUnidades) || 0;
+                const actual = form.productosSeleccionados.length;
+                if (limite < 1) return '#f2f3f4';
+                if (actual === limite) return '#dcfce7';
+                return '#fef3c7';
+              })()
+            }}>
               <span>Productos seleccionados:</span>
 
-              <strong>
-                {form.productosSeleccionados.length}
+              <strong style={{ color: (() => {
+                const limite = Number(form.cantidadUnidades) || 0;
+                const actual = form.productosSeleccionados.length;
+                if (limite < 1) return '#111';
+                if (actual === limite) return '#16a34a';
+                return '#d97706';
+              })() }}>
+                {form.productosSeleccionados.length} / {Number(form.cantidadUnidades) || '?'}
               </strong>
             </div>
 
@@ -593,7 +637,13 @@ const FormModal = ({
                 <input
                   type="text"
                   className="pm-input"
-                  placeholder="Escribe el nombre del producto..."
+                  placeholder={(() => {
+                    const limite = Number(form.cantidadUnidades) || 0;
+                    const actual = form.productosSeleccionados.length;
+                    if (limite < 1) return 'Primero define la cantidad unitaria';
+                    if (actual >= limite) return `Ya seleccionaste ${limite} producto(s)`;
+                    return 'Escribe el nombre del producto...';
+                  })()}
                   value={busquedaProducto}
                   onChange={e => {
                     setBusquedaProducto(e.target.value)
@@ -602,6 +652,10 @@ const FormModal = ({
                   onFocus={() => setMostrarSugerencias(true)}
                   onKeyDown={handleBuscadorKeyDown}
                   autoComplete="off"
+                  disabled={(() => {
+                    const limite = Number(form.cantidadUnidades) || 0;
+                    return limite < 1 || form.productosSeleccionados.length >= limite;
+                  })()}
                 />
 
                 {mostrarSugerencias && busquedaProducto.trim() && (

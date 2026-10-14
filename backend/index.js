@@ -2,11 +2,12 @@
 import app from "./app.js";
 import "./database.js";
 
-// Función asíncrona principal que inicializa el servidor en el puerto 4000
+// Función asíncrona principal que inicializa el servidor
 async function main() {
-  app.listen(4000);
-  console.log("server on port 4000");
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT);
+  console.log(`server on port ${PORT}`);
 }
 
 // Llamada a la función principal para levantar el backend
-main();
+main();

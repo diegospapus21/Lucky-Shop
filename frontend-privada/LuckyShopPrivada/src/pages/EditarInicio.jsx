@@ -84,6 +84,7 @@ export default function EditarInicio() {
   const editorRef = useRef(null);
   const fileInputRef = useRef(null);
   const savedRangeRef = useRef(null);
+  const needsSyncRef = useRef(true); // Indica si el editor necesita sincronizarse con el estado
 
   // Cargar configuración guardada al montar el componente
   useEffect(() => {
@@ -113,12 +114,10 @@ export default function EditarInicio() {
             const htmlRecibido =
               data.bienvenida.contenidoHtml || DEFAULT_BIENVENIDA.contenidoHtml;
             setContenidoHtml(htmlRecibido);
-            if (editorRef.current) {
-              editorRef.current.innerHTML = htmlRecibido;
-            }
           }
         }
       }
+      needsSyncRef.current = true; // Marcar que el editor necesita sincronizarse
     } catch (err) {
       console.error("Error al cargar configuración:", err);
     } finally {
@@ -126,11 +125,12 @@ export default function EditarInicio() {
     }
   };
 
-  // Mantener sincronizado el editor cuando termine de cargar o se cambie a la pestaña editor
+  // Sincronizar el editor cuando: se acaba de cargar, se cambia a pestaña editor, o se restablecen valores
   useEffect(() => {
     if (!loading && pestanaActiva === "editor" && editorRef.current) {
-      if (editorRef.current.innerHTML !== contenidoHtml) {
+      if (needsSyncRef.current || editorRef.current.innerHTML !== contenidoHtml) {
         editorRef.current.innerHTML = contenidoHtml;
+        needsSyncRef.current = false;
       }
     }
   }, [loading, pestanaActiva]);
@@ -269,6 +269,9 @@ export default function EditarInicio() {
     if (editorRef.current) {
       setContenidoHtml(editorRef.current.innerHTML);
     }
+    if (nuevaPestana === "editor") {
+      needsSyncRef.current = true;
+    }
     setPestanaActiva(nuevaPestana);
   };
 
@@ -281,6 +284,7 @@ export default function EditarInicio() {
     setTituloBienvenida(DEFAULT_BIENVENIDA.titulo);
     setContenidoHtml(DEFAULT_BIENVENIDA.contenidoHtml);
     handleQuitarImagen();
+    needsSyncRef.current = true;
     if (editorRef.current) {
       editorRef.current.innerHTML = DEFAULT_BIENVENIDA.contenidoHtml;
     }
