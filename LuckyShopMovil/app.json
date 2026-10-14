@@ -4,14 +4,14 @@
     "slug": "luckyshop-movil",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/LogoLucky.jpg",
     "scheme": "luckyshop",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/LogoLucky.jpg",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#ff3b8f"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,13 +20,13 @@
     "android": {
       "package": "com.luckyshop.movil",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/LogoLucky.jpg",
+        "backgroundColor": "#ff3b8f"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/LogoLucky.jpg"
     },
     "extra": {
       "eas": {
