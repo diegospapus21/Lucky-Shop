@@ -99,6 +99,51 @@ const ProductoDetalle = () => {
   // Lista de imágenes a mostrar: las del array "imagenes", o si no hay, la imagen de presentación
   const imagenes = producto.imagenes?.length > 0 ? producto.imagenes : [producto.imagenPresentacion].filter(Boolean)
 
+  // Determina la ruta y etiqueta de regreso según de dónde vino el usuario o la categoría del producto
+  const getVolverInfo = () => {
+    const from = location.state?.from
+
+    // Si viene de una ruta específica
+    if (from) {
+      if (from.includes('/categoria/anillos')) return { to: from, label: 'Anillos' }
+      if (from.includes('/categoria/pulseras')) return { to: from, label: 'Pulseras' }
+      if (from.includes('/categoria/aritos')) return { to: from, label: 'Aritos' }
+      if (from.includes('/categoria/collares')) return { to: from, label: 'Collares' }
+      if (from.includes('/categoria/otros')) return { to: from, label: 'Otros' }
+      if (from.includes('/bolsas-suerte')) return { to: from, label: 'Bolsas de la suerte' }
+      if (from.includes('/guia-regalo')) return { to: from, label: 'Guía de regalo' }
+      if (from.includes('/promociones')) return { to: from, label: 'Promociones' }
+      if (from.includes('/favoritos')) return { to: from, label: 'Favoritos' }
+      if (from.includes('/buscar')) return { to: from, label: 'Búsqueda' }
+      if (from.includes('/perfil')) return { to: '/perfil', label: 'Mi perfil' }
+      if (from.includes('/home') || from === '/') return { to: '/home', label: 'Inicio' }
+      return { to: from, label: 'Volver' }
+    }
+
+    // Si no vino state.from, deducir por la categoría del producto
+    const cat = (producto?.idCategoria || producto?.categoria || '').toLowerCase()
+    if (cat.includes('anillo')) return { to: '/categoria/anillos', label: 'Anillos' }
+    if (cat.includes('pulsera')) return { to: '/categoria/pulseras', label: 'Pulseras' }
+    if (cat.includes('arete') || cat.includes('arito')) return { to: '/categoria/aritos', label: 'Aritos' }
+    if (cat.includes('collar')) return { to: '/categoria/collares', label: 'Collares' }
+    if (cat.includes('bolsa')) return { to: '/bolsas-suerte', label: 'Bolsas de la suerte' }
+    if (cat.includes('otro')) return { to: '/categoria/otros', label: 'Otros' }
+
+    return { to: '/home', label: 'Inicio' }
+  }
+
+  const volverInfo = getVolverInfo()
+
+  const handleVolver = () => {
+    if (location.state?.from) {
+      navigate(location.state.from)
+    } else if (volverInfo.to) {
+      navigate(volverInfo.to)
+    } else {
+      navigate(-1)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -110,7 +155,22 @@ const ProductoDetalle = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-6 py-10">
+      {/* Flecha para regresar a la sección correspondiente */}
+      <div className="max-w-4xl mx-auto px-6 pt-6 pb-2 w-full">
+        <button
+          type="button"
+          onClick={handleVolver}
+          className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-500 font-bold text-lg transition-colors cursor-pointer"
+          id="btn-volver-detalle"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          {volverInfo.label}
+        </button>
+      </div>
+
+      <div className="container mx-auto px-6 py-6">
         <div className="flex flex-col md:flex-row gap-10 max-w-4xl mx-auto">
 
           {/* Columna de imágenes: imagen grande + miniaturas */}

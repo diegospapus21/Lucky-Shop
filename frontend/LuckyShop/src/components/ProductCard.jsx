@@ -147,6 +147,7 @@ const ProductCard = ({ producto }) => {
         {/* Botón que lleva a la página de detalle del producto */}
         <Link
           to={`/producto/${producto._id}`}
+          state={{ from: location.state?.from || (location.pathname + location.search) }}
           className="btn-pink-pulse block w-full text-center bg-gradient-to-r from-pink-100 to-pink-50 hover:from-pink-200 hover:to-pink-100 text-pink-600 text-sm font-semibold py-2.5 rounded-full transition-all duration-300 border border-pink-100 hover:border-pink-200"
           id={`ver-mas-${producto._id}`}
         >

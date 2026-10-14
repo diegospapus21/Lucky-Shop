@@ -1,6 +1,6 @@
 //Carrito.jsx - Pagina de carrito donde estaran los productos que ordenara el cliente
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import { useCart } from '../context/CartContext.jsx'
@@ -10,6 +10,7 @@ import Eliminar from '../assets/icons8-basura-50.png'
 const BASE_URL = import.meta.env.VITE_API_URL + ''
 
 const Carrito = () => {
+  const navigate = useNavigate()
   // Productos en el carrito y funciones para modificarlo (viene del contexto global)
   const { items, removeItem, updateCantidad, total, clearCart } = useCart()
   const { cliente } = useAuth()
@@ -50,7 +51,25 @@ const Carrito = () => {
       <Navbar />
 
       <div className="container mx-auto px-6 py-8 flex-1">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Carrito de compras</h1>
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1)
+              } else {
+                navigate('/home')
+              }
+            }}
+            className="inline-flex items-center gap-2 text-2xl font-bold text-gray-900 hover:text-pink-600 transition-colors cursor-pointer"
+            id="btn-volver-carrito"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span>Carrito de compras</span>
+          </button>
+        </div>
 
         {items.length === 0 ? (
           // Carrito vacío: invita a explorar productos
@@ -95,10 +114,12 @@ const Carrito = () => {
                     {/* Control de cantidad: restar, mostrar cantidad, sumar */}
                     <div className="flex items-center justify-center gap-2">
                       <button
+                        type="button"
                         onClick={() => updateCantidad(item._id, item.imagenPresentacion, item.cantidad - 1)}
-                        className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-pink-400 hover:text-pink-500 transition-colors font-bold"
+                        className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:border-pink-400 hover:text-pink-500 transition-colors font-bold cursor-pointer"
+                        title="Disminuir cantidad"
                       >
-                      
+                        −
                       </button>
                       <span className="w-8 text-center text-sm font-semibold">{item.cantidad}</span>
                       {/* El botón de sumar se deshabilita si ya se alcanzó el stock disponible */}

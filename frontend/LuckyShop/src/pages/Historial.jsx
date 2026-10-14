@@ -1,5 +1,6 @@
 // Historial.jsx — historial de compras del cliente
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -7,6 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 const BASE_URL = import.meta.env.VITE_API_URL + ''
 
 const Historial = () => {
+  const navigate = useNavigate()
   const { cliente } = useAuth()
   const [ventas, setVentas] = useState([])           // Ventas del cliente
   const [loading, setLoading] = useState(true)
@@ -76,9 +78,25 @@ const Historial = () => {
         {/* Encabezado Principal: cambia el subtítulo según si hay un pedido seleccionado */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">
-              Historial de compras
-            </h1>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedVenta) {
+                  setSelectedVenta(null)
+                } else if (window.history.length > 1) {
+                  navigate(-1)
+                } else {
+                  navigate('/home')
+                }
+              }}
+              className="inline-flex items-center gap-2 text-3xl font-extrabold tracking-tight text-gray-900 hover:text-pink-600 transition-colors cursor-pointer text-left"
+              id="btn-volver-historial"
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              <span>Historial de compras</span>
+            </button>
             <p className="text-sm text-gray-500 mt-1">
               {selectedVenta
                 ? `Detalles del pedido #${selectedVenta._id?.slice(-6)}`

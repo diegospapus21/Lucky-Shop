@@ -108,8 +108,8 @@ const BolsasSuerte = () => {
                   <p className="text-sm font-bold text-gray-900 mb-3">${Number(bolsa.precio).toFixed(2)}</p>
                   {/* Al hacer clic, agrega la bolsa al carrito (o pide iniciar sesión primero) */}
                   <button
-                    onClick={() => navigate(`/bolsa/${bolsa._id}`)}
-                    className="block w-full text-center bg-pink-100 hover:bg-pink-200 text-pink-600 text-sm font-medium py-2 rounded-full"
+                    onClick={() => navigate(`/bolsa/${bolsa._id}`, { state: { from: '/bolsas-suerte' } })}
+                    className="block w-full text-center bg-pink-100 hover:bg-pink-200 text-pink-600 text-sm font-medium py-2 rounded-full cursor-pointer"
                   >
                     Ver más
                   </button>

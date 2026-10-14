@@ -1,6 +1,6 @@
 // Perfil.jsx — página de perfil del cliente (datos personales + favoritos)
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 const BASE_URL = import.meta.env.VITE_API_URL + ''
 
 const Perfil = () => {
+  const navigate = useNavigate()
   const { checkSession } = useAuth() // se usa para refrescar el nombre en el Navbar tras editar el perfil
   const fileInputRef = useRef(null)   // referencia al input de archivo (oculto) para la foto de perfil
 
@@ -135,7 +136,23 @@ const Perfil = () => {
         style={{ background: 'linear-gradient(120deg, #ffd6e8 0%, #ffe9f2 50%, #ffd6e8 100%)' }}
       >
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <h1 className="text-3xl font-bold text-gray-900">Mi perfil</h1>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1)
+              } else {
+                navigate('/home')
+              }
+            }}
+            className="inline-flex items-center gap-3 text-3xl font-bold text-gray-900 hover:text-pink-600 transition-colors cursor-pointer text-left"
+            id="btn-volver-perfil"
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            <span>Mi perfil</span>
+          </button>
           <p className="text-sm text-gray-600 md:text-right max-w-sm">
             Gestiona tu información personal, revisa tus pedidos, direcciones y más.
           </p>
@@ -285,6 +302,7 @@ const Perfil = () => {
                 <Link
                   key={producto._id}
                   to={`/producto/${producto._id}`}
+                  state={{ from: '/perfil' }}
                   className="rounded-2xl border border-gray-100 hover:shadow-md transition-shadow overflow-hidden"
                 >
                   <div className="aspect-square bg-gray-50">

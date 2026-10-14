@@ -90,7 +90,28 @@ const BolsaDetalle = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-6 py-10">
+      {/* Flecha para regresar a Bolsas de la suerte */}
+      <div className="max-w-4xl mx-auto px-6 pt-6 pb-2 w-full">
+        <button
+          type="button"
+          onClick={() => {
+            if (location.state?.from) {
+              navigate(location.state.from)
+            } else {
+              navigate('/bolsas-suerte')
+            }
+          }}
+          className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-500 font-bold text-lg transition-colors cursor-pointer"
+          id="btn-volver-bolsa"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Bolsas de la suerte
+        </button>
+      </div>
+
+      <div className="container mx-auto px-6 py-6">
         <div className="flex flex-col md:flex-row gap-10 max-w-4xl mx-auto">
 
           {/* Columna de imágenes: imagen grande + miniaturas */}
