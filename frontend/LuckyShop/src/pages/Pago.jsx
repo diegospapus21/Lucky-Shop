@@ -214,10 +214,6 @@ const Pago = () => {
                   <input type="radio" name="metodoPago" value="transaccion" checked={metodoPago === 'transaccion'} onChange={(e) => setMetodoPago(e.target.value)} className="text-pink-500 focus:ring-pink-500" />
                   <span className="text-sm font-medium">Pago en Transacción</span>
                 </label>
-                <label className={`flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer transition-colors ${metodoPago === 'paypal' ? 'border-pink-300 bg-pink-50' : 'border-gray-200'}`}>
-                  <input type="radio" name="metodoPago" value="paypal" checked={metodoPago === 'paypal'} onChange={(e) => setMetodoPago(e.target.value)} className="text-pink-500 focus:ring-pink-500" />
-                  <span className="text-sm font-medium">PayPal</span>
-                </label>
               </div>
 
               <div className={`border rounded-lg p-5 transition-all ${metodoPago === 'tarjeta' ? 'border-pink-300 bg-pink-50/30' : 'border-gray-200 opacity-70 grayscale'}`}>
