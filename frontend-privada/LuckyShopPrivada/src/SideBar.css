@@ -3,22 +3,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Paleta de Colores Elevada */
-  --bg-sidebar-gradient: linear-gradient(145deg, #03140a 0%, #05220c 100%);
-  --bg-sidebar-glow: rgba(0, 230, 118, 0.03);
-  --color-primary-pink: #ff3b8f; /* Rosa Vibrante */
-  --color-secondary-green: #00e676; /* Verde Trébol / Neón */
-  --color-active-bg: rgba(0, 230, 118, 0.08); /* Fondo verde translúcido para activo */
-  --color-active-bg-pink: rgba(255, 59, 143, 0.08); /* Fondo rosa translúcido */
+  /* Paleta de Colores */
+  --sidebar-bg: #ffffff;
+  --sidebar-green: #1a3d26; /* Verde oscuro: borde, líneas y detalles del sidebar */
+  --sidebar-green-tint: rgba(26, 61, 38, 0.08); /* Fondo verde suave para el ítem activo */
+  --sidebar-text: #111111; /* Letras e iconos en negro */
+  --sidebar-hover: rgba(0, 0, 0, 0.04);
 
-  --text-primary: #ffffff;
-  --text-muted: #83978b;
-  --text-hover: #fff;
-  /* Glassmorphism & Bordes */
+  --color-primary-pink: #ff3b8f; /* Rosa Vibrante */
+  --color-secondary-green: #00e676; /* Verde Trébol / Neón (lo usan el perfil y las notificaciones) */
+
+  --text-primary: #111111;
+  --text-muted: #111111;
+
+  /* Bordes y sombras */
   --border-glass: 1px solid rgba(255, 255, 255, 0.06);
-  --border-glow-green: 1px solid rgba(0, 230, 118, 0.2);
-  --border-glow-pink: 1px solid rgba(255, 59, 143, 0.25);
-  --shadow-premium: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  --shadow-premium: 0 8px 30px rgba(0, 0, 0, 0.12); /* Sombra gris suave */
 
   /* Fuentes */
   --font-family-main: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -46,12 +46,11 @@
 
 /* --- SIDEBAR PRINCIPAL --- */
 .luckyshop-sidebar {
-  background: var(--bg-sidebar-gradient);
-  border: var(--border-glass);
-  border-left: none;
+  background: var(--sidebar-bg);
+  border: 2px solid var(--sidebar-green);
   border-radius: 24px;
   box-shadow: var(--shadow-premium);
-  color: var(--text-primary);
+  color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
   height: calc(100vh - 20px); /* Ocupa casi toda la pantalla verticalmente, sin pasarse */
@@ -63,20 +62,6 @@
   box-sizing: border-box;
 }
 
-/* Efecto de luz ambiental en la esquina trasera del sidebar */
-.luckyshop-sidebar::after {
-  background: radial-gradient(circle, var(--color-secondary-green) 0%, transparent 70%);
-  bottom: 0;
-  content: '';
-  left: 0;
-  opacity: 0.15;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-  top: 0;
-  z-index: -1;
-}
-
 /* Contenedor del Logo */
 .logo-container {
   align-items: center;
@@ -84,28 +69,28 @@
   justify-content: center;
   margin-top: 4px;
   margin-bottom: 6px;
-  padding: 4px 15px;
+  padding: 4px 10px;
 }
 
 /* Logo con escalado inteligente para evitar desbordes */
 .logo-img {
-  filter: drop-shadow(0 4px 8px rgba(255, 59, 143, 0.2));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.15));
   height: auto;
-  max-height: 52px;
+  max-height: 64px;
   max-width: 100%;
   object-fit: contain;
   transition: var(--transition-smooth);
 }
 
 .logo-img:hover {
-  filter: drop-shadow(0 6px 12px rgba(255, 59, 143, 0.4)) drop-shadow(0 0 10px rgba(0, 230, 118, 0.2));
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.25));
   transform: scale(1.03);
 }
 
-/* Separadores Estilizados (Gradiente Suave) */
+/* Separadores en verde oscuro (degradado suave hacia los extremos) */
 .sidebar-divider {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12) 50%, transparent);
-  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--sidebar-green) 50%, transparent);
+  height: 2px;
   margin: 8px 0 12px 0;
   width: 100%;
 }
@@ -121,7 +106,7 @@
   align-items: center;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--sidebar-text);
   cursor: pointer;
   display: flex;
   gap: 12px;
@@ -131,7 +116,7 @@
 }
 
 .sidebar-footer-link:hover {
-  color: #ffffff;
+  color: var(--sidebar-green);
 }
 
 .sidebar-footer-link .menu-text {
@@ -148,7 +133,7 @@
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Aumentado de 2px a 8px para separar los botones */
+  gap: 8px;
   width: 100%;
   flex: 1 1 auto; /* Ocupa el alto disponible para poder empujar el último item abajo */
   padding-top: 4px;
@@ -174,14 +159,15 @@
 .menu-link {
   align-items: center;
   border-radius: 10px;
+  color: var(--sidebar-text); /* los iconos SVG heredan este negro (currentColor) */
   display: flex;
-  padding: 10px 14px; /* Aumentado de 6px a 10px para dar más altura a cada ítem */
+  padding: 10px 14px;
   position: relative;
   transition: var(--transition-smooth);
   width: 100%;
 }
 
-/* Botón de Cerrar sesión: se ve idéntico a un enlace del menú (mismo estilo blanco) */
+/* Botón de Cerrar sesión: se ve idéntico a un enlace del menú */
 .sidebar-logout-btn {
   width: 100%;
   background: transparent;
@@ -189,7 +175,7 @@
   cursor: pointer;
   font: inherit;
   text-align: left;
-  color: var(--text-primary); /* el icono (currentColor) hereda el blanco */
+  color: var(--sidebar-text);
 }
 
 /* Iconos contenedores */
@@ -203,18 +189,23 @@
   width: 26px;
 }
 
+/* Iconos en negro: las imágenes (blancas) se convierten a negro con el filtro */
 .icon-wrapper img,
 .icon-wrapper svg {
   height: 23px;
   object-fit: contain;
-  opacity: 0.8;
+  opacity: 0.9;
   transition: var(--transition-smooth);
   width: 23px;
 }
 
+.icon-wrapper img {
+  filter: brightness(0);
+}
+
 /* Textos de los botones */
 .menu-text {
-  color: var(--text-muted);
+  color: var(--sidebar-text);
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0.2px;
@@ -223,11 +214,11 @@
 
 /* --- EFECTOS DE HOVER --- */
 .menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--sidebar-hover);
 }
 
 .menu-item:hover .menu-text {
-  color: var(--text-primary);
+  color: var(--sidebar-text);
   transform: translateX(4px);
 }
 
@@ -238,28 +229,27 @@
 }
 
 /* --- ESTADO ACTIVO --- */
-/* Item Activo General (Verde Esmeralda Temático) */
+/* Ítem activo: fondo verde suave, borde verde oscuro, letras e iconos en negro */
 .menu-item.active {
-  background: var(--color-active-bg);
-  border: var(--border-glow-green);
+  background: var(--sidebar-green-tint);
+  border: 1px solid var(--sidebar-green);
 }
 
-/* Para resaltar la sección 'Bolsas de la suerte' o 'Inicio' con Rosa si se desea */
 .menu-item.active .menu-text {
-  color: var(--color-secondary-green);
-  font-weight: 600;
+  color: var(--sidebar-text);
+  font-weight: 700;
 }
 
-.menu-item.active .icon-wrapper img {
-  filter: drop-shadow(0 0 4px var(--color-secondary-green));
+.menu-item.active .icon-wrapper img,
+.menu-item.active .icon-wrapper svg {
   opacity: 1;
 }
 
-/* Indicador luminoso lateral para el ítem activo */
+/* Indicador lateral del ítem activo (verde oscuro, con sombra gris) */
 .menu-item.active::before {
-  background-color: var(--color-secondary-green);
+  background-color: var(--sidebar-green);
   border-radius: 4px;
-  box-shadow: 0 0 8px var(--color-secondary-green);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
   content: '';
   height: 60%;
   left: 0;
@@ -420,7 +410,7 @@
   }
 }
 
-/* ── Modal de confirmación de cierre de sesión (agregar al final de SideBar.css) ── */
+/* ── Modal de confirmación de cierre de sesión ── */
 
 .logout-modal-overlay {
   position: fixed;

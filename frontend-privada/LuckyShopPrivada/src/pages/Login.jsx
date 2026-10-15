@@ -1,7 +1,7 @@
 // Login.jsx — login del panel de administración de Lucky Shop
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import AdminLogo from '../components/AdminLogo.jsx'
+import logoNegro from '../assets/LogoNegro-removebg-preview.png'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const CLOVER_BG = 'https://images.unsplash.com/photo-1748357663177-f93b0d158eda?fm=jpg&q=80&w=1200&auto=format&fit=crop'
@@ -78,7 +78,12 @@ const Login = () => {
           </h2>
 
           <div className="border border-gray-200 rounded-2xl shadow-sm px-7 py-8">
-            <AdminLogo size="md" className="mb-6" />
+            {/* Logo negro de Luckyshop */}
+            <img
+              src={logoNegro}
+              alt="Luckyshop by Lesly"
+              className="mx-auto mb-6 block h-20 w-auto"
+            />
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

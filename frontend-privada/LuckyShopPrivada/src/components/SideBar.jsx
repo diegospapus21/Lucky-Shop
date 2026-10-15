@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 // Importación de activos gráficos e iconos para la barra de navegación lateral
-import logosite from '../assets/image-removebg-preview.png'
+import logosite from '../assets/LogoNegro-removebg-preview.png'
 import HomeIcon from '../assets/icons8-casa-24.png'
 import ventaIcon from '../assets/ventas.png'
 import productoIcon from '../assets/icons8-paquete-50.png'
@@ -10,7 +10,6 @@ import clienteIcon from '../assets/icons8-grupo-de-usuario-2-32.png'
 import bolsasIcon from '../assets/suerte.png'
 import videosIcon from '../assets/icons8-vídeo-50.png'
 import FinanzasIcon from '../assets/finanza.png'
-import EditarInicio from '../pages/EditarInicio'
 
 // URL base de la API backend, para el cierre de sesión
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
