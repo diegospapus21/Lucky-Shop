@@ -1,9 +1,10 @@
-import jsonwebtoken from "jsonwebtoken"; 
-import bcrypt from "bcryptjs"; 
-import crypto from "crypto"; 
+import jsonwebtoken from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 import HTMLRecoveryEmail from "../utils/sendMailRecovery.js";
 import { sendEmail } from "../utils/sendMailMailjet.js"; // nuevo metodo de envio de correos
+import { hashCode, codesMatch, readRecoveryToken } from "../utils/recoveryCode.js";
 
 import { config } from "../../config.js";
 
@@ -12,18 +13,17 @@ import adminModel from "../models/admin.js";
 
 const recoveryPasswordAdminController = {};
 
-const isProduction = process.env.NODE_ENV === "production";
-const cookieOptions = {
-  maxAge: 15 * 60 * 1000,
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
-};
+const SESION_VENCIDA =
+  "El código o la sesión ha expirado. Solicita un nuevo código.";
 
 //POST - Solicitar un código de recuperación y enviarlo al correo del admin
 recoveryPasswordAdminController.requestCode = async (req, res) => {
   try {
-    const email = req.body.email?.trim().toLowerCase();
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
 
     const userFound = await adminModel.findOne({ email });
 
@@ -33,13 +33,12 @@ recoveryPasswordAdminController.requestCode = async (req, res) => {
 
     const randomCode = crypto.randomBytes(3).toString("hex");
 
+    // En el token va solo el hash del código, nunca el código en claro
     const token = jsonwebtoken.sign(
-      { email, randomCode, userType: "Admin", verified: false },
+      { email, codeHash: hashCode(email, randomCode), userType: "Admin", verified: false },
       config.JWT.secret,
       { expiresIn: "15m" },
     );
-
-    res.cookie("recoveryCookie", token, cookieOptions);
 
     // Enviamos el código de recuperación usando Mailjet
     try {
@@ -53,6 +52,7 @@ recoveryPasswordAdminController.requestCode = async (req, res) => {
       return res.status(500).json({ message: "Error sending email" });
     }
 
+    // El token viaja en el cuerpo: no depende de cookies entre dominios (Vercel y Render).
     return res.status(200).json({ message: "email sent", recoveryToken: token });
   } catch (error) {
     console.log("error" + error);
@@ -63,25 +63,13 @@ recoveryPasswordAdminController.requestCode = async (req, res) => {
 //POST - Verificar que el código ingresado sea correcto
 recoveryPasswordAdminController.verifyCode = async (req, res) => {
   try {
-    const { code, recoveryToken } = req.body;
+    const decoded = readRecoveryToken(req, "Admin");
 
-    const token = req.cookies.recoveryCookie || recoveryToken;
-    if (!token) {
-      return res.status(400).json({
-        message: "No se encontró la sesión de recuperación o ha expirado. Solicita un nuevo código.",
-      });
+    if (!decoded || decoded.verified || !decoded.codeHash) {
+      return res.status(401).json({ message: SESION_VENCIDA });
     }
 
-    let decoded;
-    try {
-      decoded = jsonwebtoken.verify(token, config.JWT.secret);
-    } catch (jwtErr) {
-      return res.status(401).json({
-        message: "El código o la sesión ha expirado. Solicita un nuevo código.",
-      });
-    }
-
-    if (!code || code.trim().toLowerCase() !== decoded.randomCode?.trim().toLowerCase()) {
+    if (!codesMatch(decoded.email, req.body?.code, decoded.codeHash)) {
       return res.status(400).json({ message: "Invalid code" });
     }
 
@@ -90,8 +78,6 @@ recoveryPasswordAdminController.verifyCode = async (req, res) => {
       config.JWT.secret,
       { expiresIn: "15m" },
     );
-
-    res.cookie("recoveryCookie", newToken, cookieOptions);
 
     return res.status(200).json({ message: "Code verified successfully", recoveryToken: newToken });
   } catch (error) {
@@ -103,26 +89,16 @@ recoveryPasswordAdminController.verifyCode = async (req, res) => {
 //POST - Establecer una nueva contraseña después de verificar el código
 recoveryPasswordAdminController.newPassword = async (req, res) => {
   try {
-    const { newPassword, confirmNewPassword, recoveryToken } = req.body;
+    const { newPassword, confirmNewPassword } = req.body ?? {};
 
     if (!newPassword || newPassword !== confirmNewPassword) {
       return res.status(400).json({ message: "password doesnt match" });
     }
 
-    const token = req.cookies.recoveryCookie || recoveryToken;
-    if (!token) {
-      return res.status(400).json({
-        message: "Sesión de recuperación no encontrada o expirada. Solicita un nuevo código.",
-      });
-    }
+    const decoded = readRecoveryToken(req, "Admin");
 
-    let decoded;
-    try {
-      decoded = jsonwebtoken.verify(token, config.JWT.secret);
-    } catch (jwtErr) {
-      return res.status(401).json({
-        message: "La sesión ha expirado. Solicita un nuevo código.",
-      });
+    if (!decoded) {
+      return res.status(401).json({ message: SESION_VENCIDA });
     }
 
     if (!decoded.verified) {
@@ -137,7 +113,7 @@ recoveryPasswordAdminController.newPassword = async (req, res) => {
       { new: true },
     );
 
-    res.clearCookie("recoveryCookie", cookieOptions);
+    res.clearCookie("recoveryCookie");
 
     return res.status(200).json({ message: "Password updated" });
   } catch (error) {
