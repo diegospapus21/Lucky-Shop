@@ -26,6 +26,8 @@ const ProductoDetalle = () => {
   const [toast,       setToast]       = useState(false)
   const [descuento,   setDescuento]   = useState(0)    // porcentaje de promo activa para este producto
   const [fechaFin,    setFechaFin]    = useState(null) // hasta cuándo dura la promoción
+  const [esFavorito,  setEsFavorito]  = useState(false) // si el producto está en favoritos del usuario
+  const [cargandoFav, setCargandoFav] = useState(false) // evita doble clic mientras se guarda
 
   // Si el producto no se encuentra (error al cargar), redirige al inicio
   useEffect(() => {
@@ -39,6 +41,11 @@ const ProductoDetalle = () => {
     setImgActiva(0)
     setCantidad(1)
   }, [id])
+
+  // Si el producto ya trae si es favorito, lo respetamos
+  useEffect(() => {
+    if (producto?.esFavorito !== undefined) setEsFavorito(producto.esFavorito)
+  }, [producto])
 
   // Consultar si este producto tiene una promoción activa
   useEffect(() => {
@@ -81,6 +88,29 @@ const ProductoDetalle = () => {
     addItem({ ...producto, precio: precioFinal, imagenPresentacion: imagenes[imgActiva] }, cantidad)
     setToast(true)
     setTimeout(() => setToast(false), 2500)
+  }
+
+  // Marca o quita el producto como favorito. Si no hay sesión, redirige a login.
+  const handleToggleFavorito = async () => {
+    if (!producto) return
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: location } })
+      return
+    }
+
+    setCargandoFav(true)
+    try {
+      const res = await fetch(`${BASE_URL}/perfilCliente/favoritos/${producto._id}`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (res.ok) setEsFavorito(data.esFavorito)
+    } catch {
+      // si falla, dejamos el estado como estaba
+    } finally {
+      setCargandoFav(false)
+    }
   }
 
   // Mientras se carga el producto, se muestra un spinner
@@ -255,8 +285,17 @@ const ProductoDetalle = () => {
               >
                 Agregar al carrito
               </button>
-              <button className="w-12 h-12 rounded-2xl border-2 border-gray-200 flex items-center justify-center text-xl hover:border-pink-400 hover:text-pink-500 transition-all">
-                ♡
+              <button
+                onClick={handleToggleFavorito}
+                disabled={cargandoFav}
+                aria-label={esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center text-xl transition-all ${
+                  esFavorito
+                    ? 'border-pink-500 text-pink-500 bg-pink-50'
+                    : 'border-gray-200 hover:border-pink-400 hover:text-pink-500'
+                } ${cargandoFav ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+              >
+                {esFavorito ? '♥' : '♡'}
               </button>
             </div>
           </div>
