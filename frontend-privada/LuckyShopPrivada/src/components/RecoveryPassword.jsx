@@ -1,6 +1,6 @@
 // RecoveryPassword.jsx — flujo de recuperación de contraseña del panel admin
 import { useState, useRef } from 'react'
-import { Link, useNavigate } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import AdminLogo from './AdminLogo.jsx'
 import trebolFondo from '../assets/trebol-fondo.png'
 
@@ -23,6 +23,7 @@ const RecoveryPassword = ({ userType = 'admin' }) => {
   // Estados de datos del formulario
   const [email, setEmail] = useState('')
   const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [recoveryToken, setRecoveryToken] = useState(null)
   const inputsRef = useRef([])
 
   const [newPassword, setNewPassword] = useState('')
@@ -53,13 +54,16 @@ const RecoveryPassword = ({ userType = 'admin' }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message === 'user not found'
         ? 'No encontramos una cuenta con ese correo.'
         : (data.message || 'No se pudo enviar el código.'))
 
+      if (data.recoveryToken) {
+        setRecoveryToken(data.recoveryToken)
+      }
       setStep('code')
     } catch (err) {
       setError(err.message)
@@ -105,13 +109,16 @@ const RecoveryPassword = ({ userType = 'admin' }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code: fullCode }),
+        body: JSON.stringify({ code: fullCode.trim(), recoveryToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message === 'Invalid code'
         ? 'El código ingresado no es válido.'
         : (data.message || 'No se pudo verificar el código.'))
 
+      if (data.recoveryToken) {
+        setRecoveryToken(data.recoveryToken)
+      }
       setStep('newPassword')
     } catch (err) {
       setError(err.message)
@@ -129,10 +136,13 @@ const RecoveryPassword = ({ userType = 'admin' }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'No se pudo reenviar el código.')
+      if (data.recoveryToken) {
+        setRecoveryToken(data.recoveryToken)
+      }
       setCode(['', '', '', '', '', ''])
       inputsRef.current[0]?.focus()
     } catch (err) {
@@ -162,7 +172,7 @@ const RecoveryPassword = ({ userType = 'admin' }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ newPassword, confirmNewPassword: confirmPassword }),
+        body: JSON.stringify({ newPassword, confirmNewPassword: confirmPassword, recoveryToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'No se pudo actualizar la contraseña.')
