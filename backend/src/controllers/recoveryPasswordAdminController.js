@@ -12,10 +12,18 @@ import adminModel from "../models/admin.js";
 
 const recoveryPasswordAdminController = {};
 
+const isProduction = process.env.NODE_ENV === "production";
+const cookieOptions = {
+  maxAge: 15 * 60 * 1000,
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+};
+
 //POST - Solicitar un código de recuperación y enviarlo al correo del admin
 recoveryPasswordAdminController.requestCode = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     const userFound = await adminModel.findOne({ email });
 
@@ -31,7 +39,7 @@ recoveryPasswordAdminController.requestCode = async (req, res) => {
       { expiresIn: "15m" },
     );
 
-    res.cookie("recoveryCookie", token, { maxAge: 15 * 60 * 1000 });
+    res.cookie("recoveryCookie", token, cookieOptions);
 
     // Enviamos el código de recuperación usando Mailjet
     try {
@@ -45,7 +53,7 @@ recoveryPasswordAdminController.requestCode = async (req, res) => {
       return res.status(500).json({ message: "Error sending email" });
     }
 
-    return res.status(200).json({ message: "email sent" });
+    return res.status(200).json({ message: "email sent", recoveryToken: token });
   } catch (error) {
     console.log("error" + error);
     return res.status(500).json({ message: "Internal server error" });
@@ -55,12 +63,25 @@ recoveryPasswordAdminController.requestCode = async (req, res) => {
 //POST - Verificar que el código ingresado sea correcto
 recoveryPasswordAdminController.verifyCode = async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, recoveryToken } = req.body;
 
-    const token = req.cookies.recoveryCookie;
-    const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    const token = req.cookies.recoveryCookie || recoveryToken;
+    if (!token) {
+      return res.status(400).json({
+        message: "No se encontró la sesión de recuperación o ha expirado. Solicita un nuevo código.",
+      });
+    }
 
-    if (code !== decoded.randomCode) {
+    let decoded;
+    try {
+      decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    } catch (jwtErr) {
+      return res.status(401).json({
+        message: "El código o la sesión ha expirado. Solicita un nuevo código.",
+      });
+    }
+
+    if (!code || code.trim().toLowerCase() !== decoded.randomCode?.trim().toLowerCase()) {
       return res.status(400).json({ message: "Invalid code" });
     }
 
@@ -70,9 +91,9 @@ recoveryPasswordAdminController.verifyCode = async (req, res) => {
       { expiresIn: "15m" },
     );
 
-    res.cookie("recoveryCookie", newToken, { maxAge: 15 * 60 * 1000 });
+    res.cookie("recoveryCookie", newToken, cookieOptions);
 
-    return res.status(200).json({ message: "Code verified successfully" });
+    return res.status(200).json({ message: "Code verified successfully", recoveryToken: newToken });
   } catch (error) {
     console.log("error" + error);
     return res.status(500).json({ message: "Internal server error" });
@@ -82,14 +103,27 @@ recoveryPasswordAdminController.verifyCode = async (req, res) => {
 //POST - Establecer una nueva contraseña después de verificar el código
 recoveryPasswordAdminController.newPassword = async (req, res) => {
   try {
-    const { newPassword, confirmNewPassword } = req.body;
+    const { newPassword, confirmNewPassword, recoveryToken } = req.body;
 
-    if (newPassword !== confirmNewPassword) {
+    if (!newPassword || newPassword !== confirmNewPassword) {
       return res.status(400).json({ message: "password doesnt match" });
     }
 
-    const token = req.cookies.recoveryCookie;
-    const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    const token = req.cookies.recoveryCookie || recoveryToken;
+    if (!token) {
+      return res.status(400).json({
+        message: "Sesión de recuperación no encontrada o expirada. Solicita un nuevo código.",
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    } catch (jwtErr) {
+      return res.status(401).json({
+        message: "La sesión ha expirado. Solicita un nuevo código.",
+      });
+    }
 
     if (!decoded.verified) {
       return res.status(400).json({ message: "Code not verified" });
@@ -103,7 +137,7 @@ recoveryPasswordAdminController.newPassword = async (req, res) => {
       { new: true },
     );
 
-    res.clearCookie("recoveryCookie");
+    res.clearCookie("recoveryCookie", cookieOptions);
 
     return res.status(200).json({ message: "Password updated" });
   } catch (error) {

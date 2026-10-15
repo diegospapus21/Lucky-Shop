@@ -11,6 +11,7 @@ const Register = () => {
   const navigate = useNavigate()
   const [step,    setStep]    = useState(1) // 1=datos, 2=verificar código
   const [email,   setEmail]   = useState('') // se guarda para mostrarlo en el paso 2
+  const [registrationToken, setRegistrationToken] = useState(null)
   const [error,   setError]   = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -44,6 +45,9 @@ const Register = () => {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Error al registrarse')
+      if (data.registrationToken) {
+        setRegistrationToken(data.registrationToken)
+      }
       setEmail(datos.email)
       setStep(2)
     } catch (err) {
@@ -63,7 +67,7 @@ const Register = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ verificationCodeRequest: codigo }),
+        body: JSON.stringify({ verificationCodeRequest: codigo?.trim(), registrationToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Código incorrecto')

@@ -12,6 +12,7 @@ const RecuperarPassword = () => {
   const [step,            setStep]            = useState(1)   // 1: pedir correo, 2: verificar PIN, 3: nueva contraseña
   const [email,           setEmail]           = useState('')
   const [code,            setCode]            = useState('')
+  const [recoveryToken,   setRecoveryToken]   = useState(null)
   const [newPassword,     setNewPassword]     = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error,           setError]           = useState('')
@@ -27,10 +28,13 @@ const RecuperarPassword = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'No se pudo enviar el código')
+      if (data.recoveryToken) {
+        setRecoveryToken(data.recoveryToken)
+      }
       setStep(2)
     } catch (err) {
       setError(err.message)
@@ -48,10 +52,13 @@ const RecuperarPassword = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'No se pudo reenviar')
+      if (data.recoveryToken) {
+        setRecoveryToken(data.recoveryToken)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -69,10 +76,13 @@ const RecuperarPassword = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code: code.trim(), recoveryToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Código incorrecto')
+      if (data.recoveryToken) {
+        setRecoveryToken(data.recoveryToken)
+      }
       setStep(3)
     } catch (err) {
       setError(err.message)
@@ -95,7 +105,7 @@ const RecuperarPassword = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ newPassword, confirmNewPassword: confirmPassword }),
+        body: JSON.stringify({ newPassword, confirmNewPassword: confirmPassword, recoveryToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Error al actualizar la contraseña')

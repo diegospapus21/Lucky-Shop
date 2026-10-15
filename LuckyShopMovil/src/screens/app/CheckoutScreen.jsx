@@ -219,7 +219,6 @@ const CheckoutScreen = ({ route, navigation }) => {
           <View style={styles.selector}>
             {[
               { id: "tarjeta", label: "Tarjeta", icon: "card-outline" },
-              { id: "paypal", label: "PayPal", icon: "logo-paypal" },
             ].map((op) => (
               <TouchableOpacity
                 key={op.id}
