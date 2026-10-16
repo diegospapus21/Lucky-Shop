@@ -112,14 +112,17 @@ const DetallesModal = ({ producto, onClose }) => {
 
 // Modal de Agregar / Editar producto (mismo formulario para ambos modos)
 const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
+  const stockInicial = producto?.stock !== undefined ? producto.stock : 1
+  const estadoInicial = producto?.estado || (Number(stockInicial) <= 0 ? 'agotado' : 'activo')
+
   const [form, setForm] = useState({
     nombre: producto?.nombre || '',
     precio: producto?.precio || '',
-    stock: producto?.stock || 1,
+    stock: stockInicial,
     descripcion: producto?.descripcion || '',
     idCategoria: producto?.idCategoria || '',
     subCategoria: producto?.subCategoria || SUBCATEGORIAS[0],
-    estado: producto?.estado || 'activo',
+    estado: estadoInicial,
   })
   const [imagenPreviews, setImagenPreviews] = useState(producto?.imagenes?.length ? producto.imagenes : (producto?.imagenPresentacion ? [producto.imagenPresentacion] : []))
   const [imageFiles, setImageFiles] = useState([])
@@ -127,7 +130,20 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
 
   const handleChange = e => {
     const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'stock') {
+        const valNum = Number(value)
+        if (value !== '' && !isNaN(valNum) && valNum <= 0) {
+          if (prev.estado === 'activo') {
+            next.estado = 'agotado'
+          }
+        } else if (valNum > 0 && prev.estado === 'agotado') {
+          next.estado = 'activo'
+        }
+      }
+      return next
+    })
   }
 
   // Guarda los archivos elegidos y genera vistas previas locales
@@ -143,7 +159,16 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
   // Valida lo mínimo (nombre y precio) y delega la confirmación al componente padre
   const handleSubmit = () => {
     if (!form.nombre.trim() || !form.precio) return
-    onConfirmRequest({ form, imageFiles, imagenesExistentes: producto?.imagenes || (producto?.imagenPresentacion ? [producto.imagenPresentacion] : []), productoId: producto?._id })
+    const formFinal = { ...form }
+    if (Number(formFinal.stock) <= 0 && formFinal.estado === 'activo') {
+      formFinal.estado = 'agotado'
+    }
+    onConfirmRequest({
+      form: formFinal,
+      imageFiles,
+      imagenesExistentes: producto?.imagenes || (producto?.imagenPresentacion ? [producto.imagenPresentacion] : []),
+      productoId: producto?._id
+    })
   }
 
   return (

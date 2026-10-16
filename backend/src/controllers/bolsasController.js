@@ -77,16 +77,22 @@ bolsasController.insertBolsas = async (req, res) => {
       else if (productosSeleccionados) productosParsed = JSON.parse(productosSeleccionados);
     } catch (e) { /* no es JSON válido, ignorar */ }
 
+    const stockNum = Number(stock);
+    let finalEstado = estado || "activo";
+    if (stockNum <= 0 && finalEstado === "activo") {
+      finalEstado = "agotado";
+    }
+
     const newBolsa = new bolsasModel({
       nombre,
       precio: Number(precio),
-      stock: Number(stock),
+      stock: stockNum,
       descripcion,
       categoria,
       cantidadUnidades: cantidadUnidades !== undefined ? Number(cantidadUnidades) : 6,
       imagenes,
       imagenPresentacion,
-      estado: estado || "activo",
+      estado: finalEstado,
       productos: productosParsed,
     });
 
@@ -146,13 +152,21 @@ bolsasController.updateBolsas = async (req, res) => {
       });
     }
 
+    const stockNum = Number(stock);
+    let finalEstado = estado;
+    if (stockNum <= 0 && (!finalEstado || finalEstado === "activo")) {
+      finalEstado = "agotado";
+    } else if (stockNum > 0 && finalEstado === "agotado") {
+      finalEstado = "activo";
+    }
+
     const updateData = {
       nombre,
       precio: Number(precio),
-      stock: Number(stock),
+      stock: stockNum,
       descripcion,
       categoria,
-      estado,
+      estado: finalEstado,
     };
 
     // Parsear productos si viene como JSON string

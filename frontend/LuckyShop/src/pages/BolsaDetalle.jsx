@@ -163,23 +163,25 @@ const BolsaDetalle = () => {
               <p className="text-sm text-gray-600 leading-relaxed">{bolsa.descripcion}</p>
             )}
 
-            {/* Aviso de sin stock */}
-            {bolsa.stock <= 0 && (
-              <p className="text-sm text-red-500 font-medium">Sin stock disponible</p>
+            {/* Aviso de sin stock o agotado */}
+            {(bolsa.stock <= 0 || bolsa.estado === 'agotado') && (
+              <p className="text-sm text-red-500 font-medium">Bolsa agotada (sin stock disponible)</p>
             )}
 
             {/* Selector de cantidad */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setCantidad((c) => Math.max(1, c - 1))}
-                className="w-9 h-9 rounded-lg bg-gray-900 text-white text-lg flex items-center justify-center"
+                disabled={bolsa.stock <= 0 || bolsa.estado === 'agotado'}
+                className="w-9 h-9 rounded-lg bg-gray-900 text-white text-lg flex items-center justify-center disabled:opacity-40"
               >
                 -
               </button>
               <span className="w-10 text-center font-bold">{cantidad}</span>
               <button
                 onClick={() => setCantidad((c) => c + 1)}
-                className="w-9 h-9 rounded-lg bg-gray-900 text-white text-lg flex items-center justify-center"
+                disabled={bolsa.stock <= 0 || bolsa.estado === 'agotado'}
+                className="w-9 h-9 rounded-lg bg-gray-900 text-white text-lg flex items-center justify-center disabled:opacity-40"
               >
                 +
               </button>
@@ -189,10 +191,10 @@ const BolsaDetalle = () => {
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={handleAgregar}
-                disabled={bolsa.stock <= 0}
+                disabled={bolsa.stock <= 0 || bolsa.estado === 'agotado'}
                 className="flex-1 bg-gray-900 text-white py-3 rounded-2xl font-semibold text-sm hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Añadir al carrito
+                {bolsa.stock <= 0 || bolsa.estado === 'agotado' ? 'Agotada' : 'Añadir al carrito'}
               </button>
               <button
                 onClick={() => setFavorito((f) => !f)}

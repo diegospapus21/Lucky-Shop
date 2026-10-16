@@ -263,14 +263,17 @@ const FormModal = ({
     ? bolsa.productos
     : []
 
+  const stockInicial = bolsa?.stock !== undefined ? bolsa.stock : 1
+  const estadoInicial = bolsa?.estado || (Number(stockInicial) <= 0 ? 'agotado' : 'activo')
+
   const [form, setForm] = useState({
     nombre: bolsa?.nombre || '',
     precio: bolsa?.precio || '',
-    stock: bolsa?.stock || 1,
+    stock: stockInicial,
     descripcion: bolsa?.descripcion || '',
     categoria: 'Bolsa de la Suerte',
     cantidadUnidades: cantidadInicial,
-    estado: bolsa?.estado || 'activo',
+    estado: estadoInicial,
     productosSeleccionados: productosIniciales
   })
 
@@ -328,10 +331,23 @@ const FormModal = ({
   const handleChange = e => {
     const { name, value } = e.target
 
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setForm(prev => {
+      const next = {
+        ...prev,
+        [name]: value
+      }
+      if (name === 'stock') {
+        const numVal = Number(value)
+        if (value !== '' && !isNaN(numVal) && numVal <= 0) {
+          if (prev.estado === 'activo') {
+            next.estado = 'agotado'
+          }
+        } else if (numVal > 0 && prev.estado === 'agotado') {
+          next.estado = 'activo'
+        }
+      }
+      return next
+    })
   }
 
   // ==========================================================
@@ -464,13 +480,18 @@ const FormModal = ({
       return
     }
 
+    const formFinal = {
+      ...form,
+      categoria: 'Bolsa de la Suerte',
+      cantidadUnidades: cantidad,
+      productos: form.productosSeleccionados
+    }
+    if (Number(formFinal.stock) <= 0 && formFinal.estado === 'activo') {
+      formFinal.estado = 'agotado'
+    }
+
     onConfirmRequest({
-      form: {
-        ...form,
-        categoria: 'Bolsa de la Suerte',
-        cantidadUnidades: cantidad,
-        productos: form.productosSeleccionados
-      },
+      form: formFinal,
       imageFile,
       bolsaId: bolsa?._id
     })

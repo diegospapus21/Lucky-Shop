@@ -1,6 +1,8 @@
 //Controlador para gestionar las ventas y pagos
 import ventaModel from "../models/venta.js";
 import gananciasModel from "../models/ganancias.js";
+import productsModel from "../models/productos.js";
+import bolsasModel from "../models/bolsas.js";
 
 const ventaController = {};
 
@@ -117,6 +119,39 @@ ventaController.insertVenta = async (req, res) => {
     const ventaEnriquecida = enriquecerVenta(ventaGuardada);
 
     await sincronizarGanancia(ventaGuardada._id, ventaEnriquecida.estado, ventaEnriquecida.monto, ventaEnriquecida.fecha);
+
+    // Descontar stock de los productos vendidos y cambiar estado a 'agotado' si llega a 0
+    try {
+      if (ventaGuardada?.IdCarrito?.productos && Array.isArray(ventaGuardada.IdCarrito.productos)) {
+        for (const item of ventaGuardada.IdCarrito.productos) {
+          const prodId = item.idProducto?._id || item.idProducto;
+          const cant = Number(item.cantidad) || 0;
+          if (prodId && cant > 0) {
+            const prod = await productsModel.findById(prodId);
+            if (prod) {
+              const nuevoStock = Math.max(0, (prod.stock || 0) - cant);
+              prod.stock = nuevoStock;
+              if (nuevoStock === 0 && prod.estado === "activo") {
+                prod.estado = "agotado";
+              }
+              await prod.save();
+            } else {
+              const bolsa = await bolsasModel.findById(prodId);
+              if (bolsa) {
+                const nuevoStock = Math.max(0, (bolsa.stock || 0) - cant);
+                bolsa.stock = nuevoStock;
+                if (nuevoStock === 0 && bolsa.estado === "activo") {
+                  bolsa.estado = "agotado";
+                }
+                await bolsa.save();
+              }
+            }
+          }
+        }
+      }
+    } catch (stockError) {
+      console.error("Error al actualizar stock de productos tras la venta:", stockError);
+    }
 
     return res.status(201).json(ventaEnriquecida);
   } catch (error) {

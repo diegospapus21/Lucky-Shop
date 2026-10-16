@@ -70,16 +70,22 @@ const ProductCard = ({ producto }) => {
     ? precioOriginal * (1 - descuento / 100)
     : precioOriginal
 
+  const estaAgotado = producto.estado === 'agotado' || (producto.stock !== undefined && Number(producto.stock) <= 0)
+
   return (
     <div className="card-hover bg-white rounded-2xl border border-gray-100/80 overflow-hidden group relative">
       {/* Imagen del producto */}
       <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100/50 overflow-hidden">
-        {/* Badge de descuento (solo si el producto tiene promoción) */}
-        {tienePromo && (
+        {/* Badge de Agotado o de Descuento */}
+        {estaAgotado ? (
+          <span className="absolute top-3 left-3 z-10 bg-rose-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+            Agotado
+          </span>
+        ) : tienePromo ? (
           <span className="absolute top-3 left-3 z-10 bg-pink-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
             -{descuento}%
           </span>
-        )}
+        ) : null}
 
         {/* Botón de favorito (corazón) */}
         <button

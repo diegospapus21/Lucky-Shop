@@ -271,19 +271,19 @@ const ProductoDetalle = () => {
               <p className="text-sm text-gray-600 leading-relaxed">{producto.descripcion}</p>
             )}
 
-            {/* Aviso de sin stock */}
-            {producto.stock <= 0 && (
-              <p className="text-sm text-red-500 font-medium">Sin stock disponible</p>
+            {/* Aviso de sin stock o producto agotado */}
+            {(producto.stock <= 0 || producto.estado === 'agotado') && (
+              <p className="text-sm text-red-500 font-medium">Producto agotado (sin stock disponible)</p>
             )}
 
-            {/* Botón de agregar al carrito (deshabilitado si no hay stock) y botón de favorito */}
+            {/* Botón de agregar al carrito (deshabilitado si no hay stock o está agotado) y botón de favorito */}
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={handleAgregar}
-                disabled={producto.stock <= 0}
+                disabled={producto.stock <= 0 || producto.estado === 'agotado'}
                 className="flex-1 bg-gray-900 text-white py-3 rounded-2xl font-semibold text-sm hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Agregar al carrito
+                {producto.stock <= 0 || producto.estado === 'agotado' ? 'Agotado' : 'Agregar al carrito'}
               </button>
               <button
                 onClick={handleToggleFavorito}

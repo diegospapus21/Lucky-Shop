@@ -75,16 +75,22 @@ productosController.insertProducto = async (req, res) => {
 
     const imagenPresentacion = imagenes[0] || "";
 
+    const stockNum = Number(stock);
+    let finalEstado = estado || "activo";
+    if (stockNum <= 0 && finalEstado === "activo") {
+      finalEstado = "agotado";
+    }
+
     const newProducto = new productsModel({
       nombre,
       precio: Number(precio),
-      stock: Number(stock),
+      stock: stockNum,
       descripcion,
       imagenes,
       imagenPresentacion,
       idCategoria,
       subCategoria,
-      estado: estado || "activo",
+      estado: finalEstado,
     });
 
     await newProducto.save();
@@ -137,14 +143,22 @@ productosController.updateProducto = async (req, res) => {
       });
     }
 
+    const stockNum = Number(stock);
+    let finalEstado = estado;
+    if (stockNum <= 0 && (!finalEstado || finalEstado === "activo")) {
+      finalEstado = "agotado";
+    } else if (stockNum > 0 && finalEstado === "agotado") {
+      finalEstado = "activo";
+    }
+
     const updateData = {
       nombre,
       precio: Number(precio),
-      stock: Number(stock),
+      stock: stockNum,
       descripcion,
       idCategoria,
       subCategoria,
-      estado,
+      estado: finalEstado,
     };
 
     if (imagenes.length > 0) {
@@ -209,7 +223,13 @@ productosController.toggleEstado = async (req, res) => {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    const nuevoEstado = producto.estado === "activo" ? "inactivo" : "activo";
+    let nuevoEstado;
+    if (producto.estado === "activo") {
+      nuevoEstado = "inactivo";
+    } else {
+      // Si el stock es 0 o menor, el estado activo pasa a agotado
+      nuevoEstado = (producto.stock || 0) <= 0 ? "agotado" : "activo";
+    }
     producto.estado = nuevoEstado;
     await producto.save();
 
