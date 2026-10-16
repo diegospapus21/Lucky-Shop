@@ -24,5 +24,50 @@ const bolsasSchema = new Schema(
   }
 );
 
+// Middleware pre('save'): si el stock llega a 0 o menos y el estado es activo, cambia automáticamente a agotado
+bolsasSchema.pre("save", function () {
+  if (this.stock <= 0 && this.estado === "activo") {
+    this.estado = "agotado";
+  } else if (this.stock > 0 && this.estado === "agotado") {
+    this.estado = "activo";
+  }
+});
+
+// Middleware pre('findOneAndUpdate', 'updateOne'): verifica actualizaciones por query
+bolsasSchema.pre(["findOneAndUpdate", "updateOne"], function () {
+  const update = this.getUpdate();
+  if (!update) return;
+
+  let stockVal;
+  if (update.stock !== undefined) {
+    stockVal = Number(update.stock);
+  } else if (update.$set && update.$set.stock !== undefined) {
+    stockVal = Number(update.$set.stock);
+  }
+
+  if (stockVal !== undefined) {
+    if (stockVal <= 0) {
+      const estadoActual = update.estado || (update.$set && update.$set.estado);
+      if (estadoActual === "activo" || !estadoActual) {
+        if (update.$set) {
+          update.$set.estado = "agotado";
+        } else {
+          update.estado = "agotado";
+        }
+      }
+    } else if (stockVal > 0) {
+      const estadoActual = update.estado || (update.$set && update.$set.estado);
+      if (estadoActual === "agotado") {
+        if (update.$set) {
+          update.$set.estado = "activo";
+        } else {
+          update.estado = "activo";
+        }
+      }
+    }
+  }
+});
+
 //Exportamos el modelo con el nombre de la colección "bolsas"
 export default model("bolsas", bolsasSchema);
+

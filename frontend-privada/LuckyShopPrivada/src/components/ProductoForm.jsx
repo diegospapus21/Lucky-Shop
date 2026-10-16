@@ -29,6 +29,7 @@ const ProductoForm = ({ initialData = {}, onSubmit, submitting = false, onClose 
     subCategoria: '',
     estado:       'activo',
     ...initialData,
+    ...(initialData?.stock !== undefined && Number(initialData.stock) <= 0 && !initialData?.estado ? { estado: 'agotado' } : {}),
   })
 
   // Control de imágenes:URLs preexistentes, archivos cargados y vista previa unificada
@@ -48,11 +49,24 @@ const ProductoForm = ({ initialData = {}, onSubmit, submitting = false, onClose 
   // Manejador de cambios para inputs y resets automáticos de subcategoría
   const handleChange = (e) => {
     const { name, value } = e.target
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'idCategoria' ? { subCategoria: '' } : {}),
-    }))
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [name]: value,
+        ...(name === 'idCategoria' ? { subCategoria: '' } : {}),
+      }
+      if (name === 'stock') {
+        const valNum = Number(value)
+        if (value !== '' && !isNaN(valNum) && valNum <= 0) {
+          if (prev.estado === 'activo') {
+            next.estado = 'agotado'
+          }
+        } else if (valNum > 0 && prev.estado === 'agotado') {
+          next.estado = 'activo'
+        }
+      }
+      return next
+    })
   }
 
   // Manejador para agregar nuevas imágenes validando el límite máximo
@@ -87,8 +101,13 @@ const ProductoForm = ({ initialData = {}, onSubmit, submitting = false, onClose 
     e.preventDefault()
     const formData = new FormData()
 
+    const formToSubmit = { ...form }
+    if (Number(formToSubmit.stock) <= 0 && formToSubmit.estado === 'activo') {
+      formToSubmit.estado = 'agotado'
+    }
+
     // Adjunta los campos de texto excluyendo atributos del sistema o de gestión de imágenes
-    Object.entries(form).forEach(([k, v]) => {
+    Object.entries(formToSubmit).forEach(([k, v]) => {
       if (!['imagenes', 'imagenPresentacion', '__v', 'createdAt', 'updatedAt', '_id', 'source'].includes(k)) {
         formData.append(k, v)
       }
