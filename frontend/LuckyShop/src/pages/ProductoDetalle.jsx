@@ -153,7 +153,7 @@ const ProductoDetalle = () => {
     // Si no vino state.from, deducir por la categoría del producto
     const cat = (producto?.idCategoria || producto?.categoria || '').toLowerCase()
     if (cat.includes('anillo')) return { to: '/categoria/anillos', label: 'Anillos' }
-    if (cat.includes('pulsera')) return { to: '/categoria/pulseras', label: 'Pulseras' }
+    if (cat.includes('pulsera') || cat.includes('charm')) return { to: '/categoria/pulseras', label: 'Pulseras' }
     if (cat.includes('arete') || cat.includes('arito')) return { to: '/categoria/aritos', label: 'Aritos' }
     if (cat.includes('collar')) return { to: '/categoria/collares', label: 'Collares' }
     if (cat.includes('bolsa')) return { to: '/bolsas-suerte', label: 'Bolsas de la suerte' }

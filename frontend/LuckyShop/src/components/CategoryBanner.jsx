@@ -47,7 +47,7 @@ const CategoryBanner = ({ titulo, descripcion, subcategorias = [], onSubcat, sub
                   : 'border-white/80 hover:border-pink-300 hover:shadow-md'
               } bg-white/70 backdrop-blur-sm`}>
                 {s.img ? (
-                  <img src={s.img} alt={s.label} className="w-full h-full object-cover" />
+                  <img src={s.img} alt={s.label} className={`w-full h-full ${s.imgClass || 'object-contain p-2.5'}`} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-2xl">
                     {s.icon || ''}

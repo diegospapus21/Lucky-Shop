@@ -1,11 +1,12 @@
 // Categoria.jsx — listado de productos por categoría con subcategorías
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import CategoryBanner from '../components/CategoryBanner.jsx'
 import { useCategoria } from '../hooks/useCategoria.jsx'
+import joyeriaImg from '../assets/joyeria.png'
 
 // Configuración de cada categoría: título, descripción y subcategorías (si tiene).
 // La clave de cada entrada corresponde al valor de la URL (/categoria/:cat)
@@ -17,8 +18,9 @@ const CONFIG_CATEGORIAS = {
   pulseras: {
     titulo: 'Pulseras',
     descripcion: 'No es solo una joya, es un recordatorio tangible de que la suerte no ocurre por azar, sino porque llevas contigo la energía necesaria para atraerla; deja que esta pulsera sea el amuleto que sintonice tu destino con tus deseos.',
+    apiCategoria: 'Pulseras,Charms',
     subcategorias: [
-      { value: 'Tobilleras', label: 'Tobilleras' },
+      { value: 'Charms', label: 'Charms', img: joyeriaImg },
     ],
   },
   aritos: {
@@ -30,14 +32,14 @@ const CONFIG_CATEGORIAS = {
     titulo: 'Collares',
     descripcion: 'El destino se rinde ante quienes caminan con seguridad; deja que este collar sea el destello que ilumine tu camino y atraiga hacia ti las sincronías perfectas que el universo tiene preparadas para quienes se atreven a brillar.',
     subcategorias: [
-      { value: 'Set', label: 'Set' },
+      { value: 'Set', label: 'Set', icon: '💎' },
     ],
   },
   otros: {
     titulo: 'Otros',
     descripcion: 'Accesorios únicos y especiales para completar tu look.',
     subcategorias: [
-      { value: 'Bolsas', label: 'Bolsas' },
+      { value: 'Bolsas', label: 'Bolsas', icon: '🛍️' },
     ],
   },
 }
@@ -52,12 +54,39 @@ const Categoria = () => {
   const categoriaApi = config.apiCategoria || cat
   const { productos, loading, error } = useCategoria(categoriaApi)
 
-  // Subcategoría seleccionada por el usuario (ej: "Set", "Tobilleras"); vacío = sin filtro
+  // Subcategoría seleccionada por el usuario (ej: "Charms", "Set"); vacío = sin filtro
   const [subcatActiva, setSubcatActiva] = useState('')
+
+  // Reiniciar filtro de subcategoría al cambiar de categoría
+  useEffect(() => {
+    setSubcatActiva('')
+  }, [cat])
 
   // Si hay una subcategoría activa, filtra los productos que coincidan con ella
   const productosFiltrados = subcatActiva
-    ? productos.filter((p) => p.subCategoria?.toLowerCase() === subcatActiva.toLowerCase())
+    ? productos.filter((p) => {
+        const sub = subcatActiva.toLowerCase().trim()
+        const pSub = (p.subCategoria || '').toLowerCase().trim()
+        const pCat = (p.idCategoria || '').toLowerCase().trim()
+        const pNom = (p.nombre || '').toLowerCase()
+
+        if (sub === 'charms' || sub === 'charm') {
+          return (
+            pCat === 'charms' ||
+            pCat === 'charm' ||
+            pSub === 'charms' ||
+            pSub === 'charm' ||
+            pNom.includes('charm')
+          )
+        }
+        if (sub === 'set') {
+          return pCat === 'set' || pSub === 'set' || pNom.includes('set')
+        }
+        if (sub === 'bolsas' || sub === 'bolsa') {
+          return pCat === 'bolsas' || pCat === 'bolsa' || pSub === 'bolsas' || pSub === 'bolsa' || pNom.includes('bolsa')
+        }
+        return pSub === sub || pCat === sub || pNom.includes(sub)
+      })
     : productos
 
   return (

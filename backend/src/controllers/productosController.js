@@ -10,7 +10,30 @@ productosController.getProductos = async (req, res) => {
     const { categoria, estado, search } = req.query;
     const filter = {};
 
-    if (categoria) filter.idCategoria = { $regex: new RegExp(`^${categoria}$`, "i") };
+    if (categoria) {
+      const categorias = categoria
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean);
+
+      if (categorias.length > 1) {
+        filter.idCategoria = {
+          $in: categorias.map((c) => {
+            if (/^charms?$/i.test(c)) {
+              return /^charms?$/i;
+            }
+            return new RegExp(`^${c}$`, "i");
+          }),
+        };
+      } else if (categorias.length === 1) {
+        const c = categorias[0];
+        if (/^charms?$/i.test(c)) {
+          filter.idCategoria = /^charms?$/i;
+        } else {
+          filter.idCategoria = { $regex: new RegExp(`^${c}$`, "i") };
+        }
+      }
+    }
     if (estado) filter.estado = estado;
     if (search) filter.nombre = { $regex: search, $options: "i" };
 
