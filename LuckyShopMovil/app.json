@@ -9,9 +9,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/LogoLucky.jpg",
+      "image": "./assets/icons8-trébol-50.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ff3b8f"
+      "backgroundColor": "#FAD4DC"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,8 +20,8 @@
     "android": {
       "package": "com.luckyshop.movil",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/LogoLucky.jpg",
-        "backgroundColor": "#ff3b8f"
+        "foregroundImage": "./assets/icons8-trébol-50.png",
+        "backgroundColor": "#FAD4DC"
       },
       "edgeToEdgeEnabled": true
     },

@@ -8,7 +8,7 @@
  * por ejemplo cuando se llega desde una categoría del Home.
  */
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 
 import Logo from "../../components/Logo";
 import CategoryChip from "../../components/CategoryChip";
@@ -29,26 +29,24 @@ const CategoriasScreen = ({ route, navigation }) => {
   return (
     <View style={styles.pantalla}>
       <View style={styles.header}>
-        <Logo size={22} mostrarSubtitulo={false} />
+        <Logo size={22} />
       </View>
 
       <Text style={styles.titulo}>Categorías</Text>
 
       {/* Selector de categorías */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chips}
-        contentContainerStyle={styles.chipsContenido}
-      >
+      <View style={styles.chips}>
         {categorias.map((cat, i) => (
-          <TouchableOpacity key={cat.slug} onPress={() => setSlug(cat.slug)} activeOpacity={0.9}>
-            <View style={[styles.chipWrap, slug === cat.slug && styles.chipActivo]}>
-              <CategoryChip label={cat.label} icon={cat.icon} index={i} onPress={() => setSlug(cat.slug)} />
-            </View>
-          </TouchableOpacity>
+          <View key={cat.slug} style={[styles.chipWrap, slug === cat.slug && styles.chipActivo]}>
+            <CategoryChip
+              label={cat.label}
+              icon={cat.icon}
+              index={i}
+              onPress={() => setSlug(cat.slug)}
+            />
+          </View>
         ))}
-      </ScrollView>
+      </View>
 
       <Text style={styles.subtitulo}>{categoriaActual?.label}</Text>
 
@@ -83,8 +81,12 @@ const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: colors.white },
   header: { paddingTop: 54, paddingHorizontal: 20, paddingBottom: 6 },
   titulo: { fontSize: 24, fontWeight: "800", color: colors.textDark, paddingHorizontal: 20, marginTop: 6 },
-  chips: { marginTop: 16, flexGrow: 0 },
-  chipsContenido: { paddingHorizontal: 20 },
+  chips: {
+    marginTop: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
   chipWrap: { borderRadius: 18, paddingBottom: 4 },
   chipActivo: { borderBottomWidth: 2, borderBottomColor: colors.magenta },
   subtitulo: {

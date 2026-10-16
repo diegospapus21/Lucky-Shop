@@ -4,7 +4,7 @@
  *  - Un saludo de bienvenida con el NOMBRE REAL del usuario logueado (tomado del
  *    AuthContext).
  *  - Barra de búsqueda que filtra productos por texto.
- *  - Carrusel de categorías (datos reales por slug).
+ *  - Categorías (datos reales por slug).
  *  - Sección "Bolsas de la suerte" (datos reales del endpoint /api/bolsas).
  *  - Cuadrícula de productos destacados (datos reales de /api/productos).
  *
@@ -18,7 +18,6 @@ import {
   ScrollView,
   TextInput,
   Image,
-  TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
 
@@ -48,7 +47,7 @@ const HomeScreen = ({ navigation }) => {
     <ScrollView style={styles.pantalla} showsVerticalScrollIndicator={false}>
       {/* Encabezado */}
       <View style={styles.header}>
-        <Logo size={22} mostrarSubtitulo={false} />
+        <Logo size={22} />
       </View>
 
       {/* Saludo con nombre real */}
@@ -62,18 +61,13 @@ const HomeScreen = ({ navigation }) => {
           style={styles.buscadorInput}
           value={busqueda}
           onChangeText={setBusqueda}
-          placeholder="Buscar accesorio"
-          placeholderTextColor={colors.textGray}
+          placeholder="Buscar"
+          placeholderTextColor={colors.textLight}
         />
       </View>
 
       {/* Categorías */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categorias}
-        contentContainerStyle={styles.categoriasContenido}
-      >
+      <View style={styles.categorias}>
         {categorias.map((cat, i) => (
           <CategoryChip
             key={cat.slug}
@@ -88,7 +82,7 @@ const HomeScreen = ({ navigation }) => {
             }
           />
         ))}
-      </ScrollView>
+      </View>
 
       {/* Bolsas de la suerte */}
       <View style={styles.seccionHeader}>
@@ -156,16 +150,28 @@ const styles = StyleSheet.create({
   buscador: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.pinkSoft,
+    backgroundColor: colors.white,
     marginHorizontal: 20,
     marginTop: 14,
-    borderRadius: 16,
-    paddingHorizontal: 14,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: colors.magenta,
+    // brillo rosa
+    shadowColor: colors.magenta,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
   },
   lupa: { fontSize: 15, marginRight: 8 },
   buscadorInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: colors.textDark },
-  categorias: { marginTop: 18 },
-  categoriasContenido: { paddingHorizontal: 20 },
+  categorias: {
+    marginTop: 18,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
   seccionHeader: {
     flexDirection: "row",
     alignItems: "center",
