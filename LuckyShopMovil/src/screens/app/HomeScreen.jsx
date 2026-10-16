@@ -51,7 +51,7 @@ const HomeScreen = ({ navigation }) => {
       </View>
 
       {/* Saludo con nombre real */}
-      <Text style={styles.saludo}>Hola, {nombre}</Text>
+      <Text style={styles.saludo}>Hola {nombre}!</Text>
       <Text style={styles.saludoSub}>Descubre tu próxima pieza de la suerte</Text>
 
       {/* Búsqueda */}
