@@ -48,7 +48,7 @@ const AjustesScreen = ({ navigation }) => {
       if (!res.ok) throw new Error(data.message || "No se pudo cargar el perfil");
       setNombre(data.name        || "");
       setApellido(data.lastName  || "");
-      setTelefono(data.phone     || "");
+      setTelefono((data.phone || "").replace(/\D/g, "")); // solo números (limpia formatos viejos)
       setCorreo(data.email       || "");
     } catch (err) {
       setAlerta({ tipo: "error", titulo: "Error", mensaje: err.message });
@@ -72,8 +72,8 @@ const AjustesScreen = ({ navigation }) => {
       setAlerta({ tipo: "error", titulo: "Correo inválido", mensaje: "Ingresa un correo válido." });
       return false;
     }
-    if (telefono && !/^[0-9+\-\s]{7,15}$/.test(telefono.trim())) {
-      setAlerta({ tipo: "error", titulo: "Teléfono inválido", mensaje: "Ingresa un teléfono válido (7-15 dígitos)." });
+    if (telefono && !/^\d{8,15}$/.test(telefono.trim())) {
+      setAlerta({ tipo: "error", titulo: "Teléfono inválido", mensaje: "Ingresa un teléfono válido: solo números, de 8 a 15 dígitos." });
       return false;
     }
     return true;
@@ -178,9 +178,9 @@ const AjustesScreen = ({ navigation }) => {
                   label="Teléfono"
                   icon="call-outline"
                   value={telefono}
-                  onChangeText={setTelefono}
-                  placeholder="+503 0000-0000"
-                  keyboardType="phone-pad"
+                  onChangeText={(t) => setTelefono(t.replace(/\D/g, "").slice(0, 15))} // solo números
+                  placeholder="70001234"
+                  keyboardType="number-pad"
                 />
               </View>
 

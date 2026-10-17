@@ -28,6 +28,7 @@ perfilClienteController.updateMyProfile = async (req, res) => {
     // Validaciones básicas del lado del servidor
     name = name?.trim();
     email = email?.trim().toLowerCase();
+    phone = typeof phone === "string" ? phone.trim() : phone;
 
     if (!name) {
       return res.status(400).json({ message: "El nombre es obligatorio" });
@@ -36,6 +37,11 @@ perfilClienteController.updateMyProfile = async (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (email && !emailRegex.test(email)) {
       return res.status(400).json({ message: "Correo inválido" });
+    }
+
+    // El teléfono es opcional, pero si viene debe tener solo números (8 a 15 dígitos)
+    if (phone && !/^\d{8,15}$/.test(String(phone))) {
+      return res.status(400).json({ message: "El teléfono debe contener solo números (8 a 15 dígitos)" });
     }
 
     if (birthdate && (new Date(birthdate) > new Date() || new Date(birthdate) < new Date("1901-01-01"))) {

@@ -50,9 +50,11 @@ export function useProductos() {
       imageFiles.forEach(file => fd.append("imagenes", file));
     }
     
-    // Si estamos editando y conservamos imágenes existentes
-    if (esEditar && imagenesExistentes && imagenesExistentes.length > 0) {
-      imagenesExistentes.forEach(url => fd.append("imagenesExistentes", url));
+    // Si estamos editando, se envían las imágenes guardadas que se conservan.
+    // "imagenesActualizadas" avisa al backend que la lista es la definitiva (incluso si quedó vacía).
+    if (esEditar) {
+      fd.append("imagenesActualizadas", "true");
+      (imagenesExistentes || []).forEach(url => fd.append("imagenesExistentes", url));
     }
 
     const url = esEditar ? `${BASE_URL}/productos/${productoId}` : `${BASE_URL}/productos`;

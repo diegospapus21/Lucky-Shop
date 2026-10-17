@@ -10,6 +10,7 @@ import '../productosPage.css'
 const CATEGORIAS = ['Todo', 'Anillos', 'Pulseras', 'Aretes', 'Charms', 'Bolsas', 'Collares', 'Set', 'Otros']
 const SUBCATEGORIAS = ['Oro', 'Plata', 'Dorado', 'Plateado', 'Multicolor', 'Otro']
 const ESTADOS = ['activo', 'inactivo', 'agotado']
+const MAX_IMAGENES = 5 // mismo límite que el backend (multer)
 
 /*  SUBCOMPONENTES DE MODALES   */
 
@@ -124,8 +125,11 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
     subCategoria: producto?.subCategoria || SUBCATEGORIAS[0],
     estado: estadoInicial,
   })
-  const [imagenPreviews, setImagenPreviews] = useState(producto?.imagenes?.length ? producto.imagenes : (producto?.imagenPresentacion ? [producto.imagenPresentacion] : []))
-  const [imageFiles, setImageFiles] = useState([])
+  // Lista única de imágenes del producto: las que ya están guardadas (existing: true)
+  // y las nuevas que el admin acaba de elegir (existing: false, con su archivo).
+  const imagenesIniciales = producto?.imagenes?.length ? producto.imagenes : (producto?.imagenPresentacion ? [producto.imagenPresentacion] : [])
+  const [imagenes, setImagenes] = useState(imagenesIniciales.map(src => ({ src, existing: true })))
+  const [errorImagen, setErrorImagen] = useState('')
   const fileRef = useRef()
 
   const handleChange = e => {
@@ -149,11 +153,28 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
   // Guarda los archivos elegidos y genera vistas previas locales
   const handleImageChange = e => {
     const files = Array.from(e.target.files)
+    e.target.value = '' // permite volver a elegir el mismo archivo después de quitarlo
     if (!files.length) return
-    setImageFiles(prev => [...prev, ...files])
-    
-    const newPreviews = files.map(file => URL.createObjectURL(file))
-    setImagenPreviews(prev => [...prev, ...newPreviews])
+
+    const disponibles = MAX_IMAGENES - imagenes.length
+    if (disponibles <= 0) {
+      setErrorImagen(`Máximo ${MAX_IMAGENES} imágenes por producto.`)
+      return
+    }
+    setErrorImagen(files.length > disponibles ? `Solo se pueden agregar ${disponibles} imagen(es) más (máximo ${MAX_IMAGENES}).` : '')
+
+    const nuevas = files.slice(0, disponibles).map(file => ({ src: URL.createObjectURL(file), existing: false, file }))
+    setImagenes(prev => [...prev, ...nuevas])
+  }
+
+  // Quita una imagen de la lista (la guardada se elimina del producto al confirmar; la nueva simplemente no se sube)
+  const quitarImagen = idx => {
+    setImagenes(prev => {
+      const quitada = prev[idx]
+      if (quitada && !quitada.existing) URL.revokeObjectURL(quitada.src)
+      return prev.filter((_, i) => i !== idx)
+    })
+    setErrorImagen('')
   }
 
   // Valida lo mínimo (nombre y precio) y delega la confirmación al componente padre
@@ -165,8 +186,8 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
     }
     onConfirmRequest({
       form: formFinal,
-      imageFiles,
-      imagenesExistentes: producto?.imagenes || (producto?.imagenPresentacion ? [producto.imagenPresentacion] : []),
+      imageFiles: imagenes.filter(i => !i.existing).map(i => i.file),
+      imagenesExistentes: imagenes.filter(i => i.existing).map(i => i.src),
       productoId: producto?._id
     })
   }
@@ -182,18 +203,35 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
           {/* Columna imagen: haz clic para elegir archivos */}
           <div className="pm-form-img-col">
             <div className="pm-form-img-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-              {imagenPreviews.map((preview, idx) => (
-                <div key={idx} className="pm-form-img-box" style={{ width: '80px', height: '80px', position: 'relative' }}>
-                  <img src={preview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+              {imagenes.map((img, idx) => (
+                <div key={img.src} style={{ width: '80px', height: '80px', position: 'relative' }}>
+                  <img src={img.src} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  {idx === 0 && (
+                    <span style={{ position: 'absolute', bottom: 4, left: 4, background: '#ec4899', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '999px' }}>
+                      Principal
+                    </span>
+                  )}
+                  {/* X para quitar la imagen */}
+                  <button
+                    type="button"
+                    onClick={() => quitarImagen(idx)}
+                    aria-label="Quitar imagen"
+                    title="Quitar imagen"
+                    style={{ position: 'absolute', top: -7, right: -7, width: 22, height: 22, borderRadius: '50%', border: '2px solid #fff', background: '#e11d48', color: '#fff', fontSize: '11px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-              <div
-                className="pm-form-img-box"
-                onClick={() => fileRef.current?.click()}
-                style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '8px', cursor: 'pointer' }}
-              >
-                <span className="pm-img-plus">＋</span>
-              </div>
+              {imagenes.length < MAX_IMAGENES && (
+                <div
+                  className="pm-form-img-box"
+                  onClick={() => fileRef.current?.click()}
+                  style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed #ccc', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  <span className="pm-img-plus">＋</span>
+                </div>
+              )}
             </div>
             <input
               ref={fileRef}
@@ -203,7 +241,8 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
               style={{ display: 'none' }}
               onChange={handleImageChange}
             />
-            <p className="pm-form-img-label">Agregar fotos</p>
+            <p className="pm-form-img-label">Agregar fotos ({imagenes.length}/{MAX_IMAGENES})</p>
+            {errorImagen && <p style={{ color: '#dc2626', fontSize: '12px', margin: '4px 0 0' }}>{errorImagen}</p>}
           </div>
 
           {/* Columna de campos del formulario */}

@@ -59,6 +59,8 @@ const sincronizarGanancia = async (ventaId, estado, monto, fecha) => {
         },
         $set: {
           totalGanancias: monto,
+          // Finanzas agrupa por mes usando "fechaMes"; "fecha" se conserva por compatibilidad
+          fechaMes: fecha || new Date(),
           fecha: fecha || new Date(),
         },
       },

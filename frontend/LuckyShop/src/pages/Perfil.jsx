@@ -30,6 +30,11 @@ const Perfil = () => {
     formState: { errors },
   } = useForm({ mode: 'onBlur' })
 
+  // Teléfono: solo números, de 8 a 15 dígitos (opcional). Se separa el onChange para filtrar lo escrito.
+  const { onChange: phoneOnChange, ...phoneField } = register('phone', {
+    pattern: { value: /^\d{8,15}$/, message: 'Ingresa un teléfono válido: solo números, de 8 a 15 dígitos.' },
+  })
+
   // ── Cargar datos del cliente ──
   // Trae el perfil desde el backend y precarga el formulario con esos valores
   useEffect(() => {
@@ -45,7 +50,7 @@ const Perfil = () => {
           gender: data.gender || '',
           birthdate: data.birthdate ? data.birthdate.slice(0, 10) : '',
           email: data.email || '',
-          phone: data.phone || '',
+          phone: (data.phone || '').replace(/\D/g, ''), // solo números (limpia formatos viejos como +503 7000-0000)
         })
       } catch (err) {
         setError(err.message)
@@ -256,10 +261,15 @@ const Perfil = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                 <input
-                  {...register('phone', {
-                    pattern: { value: /^[0-9+\-\s]{7,15}$/, message: 'Ingresa un teléfono válido.' },
-                  })}
-                  placeholder="+503 0000-0000"
+                  {...phoneField}
+                  // Solo permite números: las letras y símbolos se descartan al escribir
+                  onChange={(e) => {
+                    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 15)
+                    phoneOnChange(e)
+                  }}
+                  inputMode="numeric"
+                  maxLength={15}
+                  placeholder="70001234"
                   className={inputClass(errors.phone)}
                 />
                 {errors.phone && <p className="text-xs text-red-500 mt-1 ml-1">{errors.phone.message}</p>}

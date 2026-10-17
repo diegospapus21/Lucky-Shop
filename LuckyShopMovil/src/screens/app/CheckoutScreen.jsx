@@ -1,10 +1,10 @@
 /**
  * CheckoutScreen.jsx
- * Pasarela de pago. Permite elegir entre:
- *  - Tarjeta: simulación de front-end (no procesa un pago real).
- *  - PayPal:  pago real (sandbox) a través del backend. El backend crea la orden,
- *             el cliente la aprueba en un WebView y luego el backend la cobra.
- *             Al completarse se registran el carrito y la venta, igual que en la web.
+ * Pantalla de pago. Usa las mismas formas de pago que la web (Pago.jsx):
+ *  - Pago en efectivo     → el pedido queda registrado como pendiente de pago.
+ *  - Pago en Transacción  → el pedido queda registrado como pagado.
+ *  - Tarjeta de crédito o débito → se procesa con Wompi (mismos endpoints que la web).
+ * Para cualquier método se registran el carrito y la venta en el backend, igual que en la web.
  */
 import React, { useState } from "react";
 import {
@@ -16,14 +16,12 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 
 import Logo from "../../components/Logo";
 import CustomButton from "../../components/CustomButton";
 import Notificacion from "../../components/Notificacion";
 import Icon from "../../components/Icon";
-import PayPalWebView from "../../components/PayPalWebView";
 import useNotificacion from "../../hooks/useNotificacion";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -31,88 +29,60 @@ import { apiFetch } from "../../api/apiClient";
 import { endpoints } from "../../api/apiConfig";
 import { colors } from "../../theme/colors";
 
+// Mismas opciones y textos que la página de pago de la web
+const METODOS = [
+  { id: "efectivo", label: "Pago en efectivo" },
+  { id: "transaccion", label: "Pago en Transacción" },
+  { id: "tarjeta", label: "Tarjeta de crédito o débito" },
+];
+
 const CheckoutScreen = ({ route, navigation }) => {
   const { items, subtotal, vaciar } = useCart();
   const { cliente } = useAuth();
   const { notificacion, mostrar, ocultar } = useNotificacion();
 
-  const [metodo, setMetodo] = useState("tarjeta"); // "tarjeta" | "paypal"
+  const total = Number(route?.params?.total ?? subtotal) || 0;
+
+  const [metodo, setMetodo] = useState("tarjeta"); // "efectivo" | "transaccion" | "tarjeta"
+  const [direccion, setDireccion] = useState(cliente?.direccion || "");
   const [cargando, setCargando] = useState(false);
-  // Datos de la orden de PayPal en curso: { orderId, url, returnUrl, cancelUrl }
-  const [ordenPayPal, setOrdenPayPal] = useState(null);
 
-  const total = route?.params?.total ?? subtotal;
-
-  const [titular, setTitular] = useState("");
+  // Datos de la tarjeta (solo se usan con el método "tarjeta")
   const [numero, setNumero] = useState("");
+  const [titular, setTitular] = useState("");
   const [caducidad, setCaducidad] = useState("");
   const [cvv, setCvv] = useState("");
 
-  // Formatea el número de tarjeta en grupos de 4 dígitos.
+  // Número de tarjeta en grupos de 4 dígitos
   const formatearNumero = (texto) => {
-    const soloDigitos = texto.replace(/\D/g, "").slice(0, 16);
-    const grupos = soloDigitos.match(/.{1,4}/g);
+    const digitos = texto.replace(/\D/g, "").slice(0, 16);
+    const grupos = digitos.match(/.{1,4}/g);
     setNumero(grupos ? grupos.join(" ") : "");
   };
 
-  // Muestra los últimos 4 dígitos en la vista previa de la tarjeta.
-  const ultimos4 = numero.replace(/\D/g, "").slice(-4).padStart(4, "•");
-
-  const manejarPago = () => {
-    if (!titular || numero.replace(/\D/g, "").length < 16 || !caducidad || !cvv) {
-      mostrar("Completa todos los datos de la tarjeta", "error");
-      return;
-    }
-    // Simulación de pago exitoso.
-    const pedido = {
-      numeroPedido: `LK-${Math.floor(100000 + Math.random() * 900000)}`,
-      total,
-      productos: items,
-    };
-    vaciar();
-    navigation.navigate("PagoExitoso", pedido);
+  // Fecha de expiración con formato MM/AA (agrega la barra sola)
+  const formatearCaducidad = (texto) => {
+    const digitos = texto.replace(/\D/g, "").slice(0, 4);
+    setCaducidad(digitos.length > 2 ? `${digitos.slice(0, 2)}/${digitos.slice(2)}` : digitos);
   };
 
-  // Lee el JSON de la respuesta sin romper si el backend devuelve texto
-  const leerJson = async (res) => {
-    try {
-      return await res.json();
-    } catch {
-      return {};
+  // Valida los datos antes de pagar. Devuelve un mensaje de error o null si todo está bien.
+  const validar = () => {
+    if (items.length === 0) return "Tu carrito está vacío";
+    if (!direccion.trim()) return "Ingresa una dirección de envío";
+    if (metodo === "tarjeta") {
+      const digitos = numero.replace(/\D/g, "");
+      if (!titular.trim()) return "Ingresa el nombre que aparece en la tarjeta";
+      if (digitos.length < 13) return "El número de tarjeta no es válido";
+      const mes = Number(caducidad.slice(0, 2));
+      if (!/^\d{2}\/\d{2}$/.test(caducidad) || mes < 1 || mes > 12) return "La fecha de expiración no es válida (MM/AA)";
+      if (cvv.length < 3) return "El CVV no es válido";
     }
-  };
-
-  // PayPal paso 1: el backend crea la orden (calcula el total con los precios de la BD)
-  const iniciarPayPal = async () => {
-    setCargando(true);
-    try {
-      const res = await apiFetch(endpoints.paypalCreateOrder, {
-        method: "POST",
-        body: JSON.stringify({
-          productos: items.map((it) => ({ idProducto: it.producto._id, cantidad: it.cantidad })),
-          incluirEnvio: false, // en la app el envío es gratis
-          plataforma: "movil",
-        }),
-      });
-      const data = await leerJson(res);
-      if (!res.ok || !data.approveUrl) {
-        throw new Error(data.message || "No se pudo iniciar el pago con PayPal");
-      }
-      setOrdenPayPal({
-        orderId: data.id,
-        url: data.approveUrl,
-        returnUrl: data.returnUrl,
-        cancelUrl: data.cancelUrl,
-      });
-    } catch (e) {
-      mostrar(e.message, "error");
-    } finally {
-      setCargando(false);
-    }
+    return null;
   };
 
   // Registra el carrito y la venta en el backend (mismo flujo que la web)
-  const registrarPedido = async (captura) => {
+  const registrarPedido = async () => {
     const carritoRes = await apiFetch(endpoints.carrito, {
       method: "POST",
       body: JSON.stringify({
@@ -126,72 +96,75 @@ const CheckoutScreen = ({ route, navigation }) => {
         estado: "activo",
       }),
     });
-    if (!carritoRes.ok) throw new Error("El pago se hizo, pero no se pudo registrar el carrito");
+    if (!carritoRes.ok) throw new Error("No se pudo registrar el carrito");
     const carrito = await carritoRes.json();
 
     const ventaRes = await apiFetch(endpoints.venta, {
       method: "POST",
       body: JSON.stringify({
         IdCarrito: carrito._id,
-        direcion: cliente?.direccion || "",
-        metodoPago: "paypal",
-        statusPago: true,
+        direcion: direccion.trim(),
+        metodoPago: metodo,
+        statusPago: metodo !== "efectivo", // en efectivo se paga al recibir
         status: true,
         fecha: new Date(),
-        idTransaccion: captura.captureID,
-        idOrdenPayPal: captura.orderID,
       }),
     });
-    if (!ventaRes.ok) throw new Error("El pago se hizo, pero no se pudo registrar la venta");
+    if (!ventaRes.ok) throw new Error("No se pudo registrar la venta");
+    return ventaRes.json();
   };
 
-  // PayPal paso 2: el cliente aprobó en el WebView, ahora cobramos la orden
-  const capturarPayPal = async () => {
-    const orderId = ordenPayPal?.orderId;
-    setOrdenPayPal(null);
+  // Cobra la tarjeta con Wompi (mismos endpoints y datos que la web)
+  const cobrarConTarjeta = async () => {
+    const tokenRes = await apiFetch(endpoints.wompiToken, { method: "POST" });
+    if (!tokenRes.ok) throw new Error("Error de conexión con el procesador de pagos");
+    const { access_token } = await tokenRes.json();
+
+    const payRes = await apiFetch(endpoints.wompiPayment, {
+      method: "POST",
+      body: JSON.stringify({
+        token: access_token,
+        formData: {
+          tarjeta: numero.replace(/\D/g, ""),
+          nombre: titular.trim(),
+          vencimiento: caducidad,
+          cvv,
+          monto: total,
+        },
+      }),
+    });
+    if (!payRes.ok) throw new Error("Pago declinado por el procesador");
+  };
+
+  const manejarPago = async () => {
+    const problema = validar();
+    if (problema) {
+      mostrar(problema, "error");
+      return;
+    }
+
     setCargando(true);
     try {
-      const res = await apiFetch(endpoints.paypalCaptureOrder, {
-        method: "POST",
-        body: JSON.stringify({ orderID: orderId }),
-      });
-      const data = await leerJson(res);
-      if (!res.ok || data.status !== "COMPLETED") {
-        throw new Error(data.message || "PayPal no completó el pago");
-      }
+      if (metodo === "tarjeta") await cobrarConTarjeta();
+      const venta = await registrarPedido();
 
       const pedido = {
-        numeroPedido: data.captureID || data.orderID,
+        numeroPedido: `LK-${String(venta?._id || Date.now()).slice(-6).toUpperCase()}`,
         total,
         productos: items,
       };
-      await registrarPedido(data);
       vaciar();
       navigation.navigate("PagoExitoso", pedido);
     } catch (e) {
-      mostrar(e.message, "error");
+      mostrar(e.message || "Ocurrió un error al procesar el pago", "error");
     } finally {
       setCargando(false);
     }
   };
 
-  const cancelarPayPal = () => {
-    setOrdenPayPal(null);
-    mostrar("Cancelaste el pago con PayPal", "info");
-  };
-
   return (
     <View style={styles.pantalla}>
       <Notificacion {...notificacion} onHide={ocultar} />
-
-      <PayPalWebView
-        visible={!!ordenPayPal}
-        url={ordenPayPal?.url}
-        returnUrl={ordenPayPal?.returnUrl}
-        cancelUrl={ordenPayPal?.cancelUrl}
-        onAprobado={capturarPayPal}
-        onCancelado={cancelarPayPal}
-      />
 
       {/* Encabezado */}
       <View style={styles.topBar}>
@@ -202,130 +175,117 @@ const CheckoutScreen = ({ route, navigation }) => {
         <View style={{ width: 22 }} />
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.contenido}>
-          <Text style={styles.titulo}>Pasarela de pago segura</Text>
-          <Text style={styles.subtitulo}>
-            {metodo === "paypal" ? "Pago con PayPal" : "Pago con tarjeta de crédito"}
-          </Text>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contenido}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.titulo}>Pago</Text>
 
-          <Text style={styles.totalLabel}>Total a pagar:</Text>
-          <Text style={styles.totalMonto}>${total.toFixed(2)}</Text>
-
-          {/* Selector de método de pago */}
-          <View style={styles.selector}>
-            {[
-              { id: "tarjeta", label: "Tarjeta", icon: "card-outline" },
-            ].map((op) => (
+          {/* Método de pago */}
+          <Text style={styles.seccion}>Método de pago</Text>
+          {METODOS.map((op) => {
+            const activo = metodo === op.id;
+            return (
               <TouchableOpacity
                 key={op.id}
-                style={[styles.opcion, metodo === op.id && styles.opcionActiva]}
+                style={[styles.opcion, activo && styles.opcionActiva]}
                 onPress={() => setMetodo(op.id)}
                 disabled={cargando}
+                activeOpacity={0.8}
               >
-                <Icon
-                  name={op.icon}
-                  size={18}
-                  color={metodo === op.id ? colors.white : colors.textDark}
-                />
-                <Text style={[styles.opcionTexto, metodo === op.id && styles.opcionTextoActivo]}>
-                  {op.label}
-                </Text>
+                <View style={[styles.radio, activo && styles.radioActivo]}>
+                  {activo && <View style={styles.radioPunto} />}
+                </View>
+                <Text style={[styles.opcionTexto, activo && styles.opcionTextoActivo]}>{op.label}</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            );
+          })}
 
-          {metodo === "tarjeta" ? (
-          <>
-          {/* Formulario */}
-          <View style={styles.form}>
-            <Text style={styles.label}>Nombre del titular</Text>
-            <TextInput
-              style={styles.input}
-              value={titular}
-              onChangeText={setTitular}
-              placeholder="Ej. Ana García"
-              placeholderTextColor={colors.textLight}
-            />
+          {/* Datos de la tarjeta */}
+          {metodo === "tarjeta" && (
+            <View style={styles.tarjetaCaja}>
+              <Text style={styles.label}>Número de tarjeta</Text>
+              <TextInput
+                style={styles.input}
+                value={numero}
+                onChangeText={formatearNumero}
+                placeholder="1234 5678 9012 3456"
+                placeholderTextColor={colors.textLight}
+                keyboardType="number-pad"
+              />
 
-            <Text style={styles.label}>Número de tarjeta</Text>
-            <TextInput
-              style={styles.input}
-              value={numero}
-              onChangeText={formatearNumero}
-              placeholder="0000 0000 0000 0000"
-              placeholderTextColor={colors.textLight}
-              keyboardType="number-pad"
-            />
+              <Text style={styles.label}>Nombre en la tarjeta</Text>
+              <TextInput
+                style={styles.input}
+                value={titular}
+                onChangeText={setTitular}
+                placeholder="John Doe"
+                placeholderTextColor={colors.textLight}
+                autoCapitalize="words"
+              />
 
-            <View style={styles.fila}>
-              <View style={styles.mitad}>
-                <Text style={styles.label}>Fecha de caducidad</Text>
-                <TextInput
-                  style={styles.input}
-                  value={caducidad}
-                  onChangeText={setCaducidad}
-                  placeholder="MM/AA"
-                  placeholderTextColor={colors.textLight}
-                  maxLength={5}
-                />
+              <View style={styles.fila}>
+                <View style={styles.mitad}>
+                  <Text style={styles.label}>Fecha de expiración</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={caducidad}
+                    onChangeText={formatearCaducidad}
+                    placeholder="05/27"
+                    placeholderTextColor={colors.textLight}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                  />
+                </View>
+                <View style={styles.mitad}>
+                  <Text style={styles.label}>CVV</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={cvv}
+                    onChangeText={(t) => setCvv(t.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="123"
+                    placeholderTextColor={colors.textLight}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                  />
+                </View>
               </View>
-              <View style={styles.mitad}>
-                <Text style={styles.label}>CVV/CVC</Text>
-                <TextInput
-                  style={styles.input}
-                  value={cvv}
-                  onChangeText={(t) => setCvv(t.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="•••"
-                  placeholderTextColor={colors.textLight}
-                  keyboardType="number-pad"
-                  secureTextEntry
-                />
-              </View>
-            </View>
-
-            {/* Vista previa de la tarjeta */}
-            <View style={styles.tarjeta}>
-              <Text style={styles.tarjetaMarca}>Lucky tarjeta</Text>
-              <Text style={styles.tarjetaNumero}>•••• •••• •••• {ultimos4}</Text>
-              <Text style={styles.tarjetaFecha}>{caducidad || "MM/AA"}</Text>
-            </View>
-          </View>
-
-          <CustomButton
-            title={`Pagar $${total.toFixed(2)}`}
-            icon="arrow-forward"
-            onPress={manejarPago}
-          />
-          </>
-          ) : (
-            <View style={styles.paypalCaja}>
-              <Text style={styles.paypalTexto}>
-                Te llevaremos a PayPal para que inicies sesión y confirmes el pago.
-                Al terminar volverás automáticamente a LuckyShop.
-              </Text>
-              <TouchableOpacity
-                style={[styles.botonPayPal, cargando && { opacity: 0.6 }]}
-                onPress={iniciarPayPal}
-                disabled={cargando || items.length === 0}
-                activeOpacity={0.85}
-              >
-                {cargando ? (
-                  <ActivityIndicator color="#003087" />
-                ) : (
-                  <Text style={styles.botonPayPalTexto}>
-                    Pagar ${total.toFixed(2)} con <Text style={{ fontStyle: "italic" }}>PayPal</Text>
-                  </Text>
-                )}
-              </TouchableOpacity>
             </View>
           )}
 
-          <Text style={styles.seguro}>Tu pago es 100% seguro</Text>
-          <View style={{ height: 20 }} />
+          {metodo === "efectivo" && (
+            <Text style={styles.nota}>Pagarás en efectivo cuando recibas tu pedido.</Text>
+          )}
+          {metodo === "transaccion" && (
+            <Text style={styles.nota}>Tu pedido se registrará como pagado por transacción.</Text>
+          )}
+
+          {/* Dirección de envío */}
+          <Text style={[styles.seccion, { marginTop: 24 }]}>Dirección de envío</Text>
+          <TextInput
+            style={[styles.input, styles.inputDireccion]}
+            value={direccion}
+            onChangeText={setDireccion}
+            placeholder="Calle, colonia, ciudad"
+            placeholderTextColor={colors.textLight}
+            multiline
+          />
+
+          {/* Resumen */}
+          <View style={styles.resumen}>
+            <Text style={styles.resumenLabel}>Total a pagar</Text>
+            <Text style={styles.resumenMonto}>${total.toFixed(2)}</Text>
+          </View>
+
+          <CustomButton
+            title={`Pagar ahora $${total.toFixed(2)}`}
+            icon="arrow-forward"
+            onPress={manejarPago}
+            loading={cargando}
+          />
+          <View style={{ height: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -345,76 +305,67 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   contenido: { paddingHorizontal: 20 },
-  titulo: { fontSize: 22, fontWeight: "800", color: colors.textDark, textAlign: "center", marginTop: 6 },
-  subtitulo: { fontSize: 14, color: colors.textGray, textAlign: "center", marginTop: 4 },
-  totalLabel: { fontSize: 18, fontWeight: "800", color: colors.textDark, textAlign: "center", marginTop: 16 },
-  totalMonto: { fontSize: 36, fontWeight: "800", color: colors.textDark, textAlign: "center", marginTop: 4 },
-  form: {
+  titulo: { fontSize: 26, fontWeight: "800", color: colors.textDark, marginTop: 6, marginBottom: 14 },
+  seccion: { fontSize: 16, fontWeight: "700", color: colors.textDark, marginBottom: 10 },
+
+  opcion: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    marginBottom: 10,
     backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 18,
-    marginTop: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  label: { fontSize: 13, fontWeight: "700", color: colors.textDark, marginBottom: 6, marginTop: 8 },
+  opcionActiva: { borderColor: colors.magenta, backgroundColor: colors.pinkTint },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.textLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  radioActivo: { borderColor: colors.magenta },
+  radioPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.magenta },
+  opcionTexto: { fontSize: 15, color: colors.textDark, fontWeight: "600" },
+  opcionTextoActivo: { color: colors.textDark },
+
+  tarjetaCaja: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 2,
+  },
+  label: { fontSize: 12, fontWeight: "700", color: colors.textGray, marginBottom: 6, marginTop: 8 },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 11,
     fontSize: 14,
     color: colors.textDark,
   },
+  inputDireccion: { minHeight: 60, textAlignVertical: "top" },
   fila: { flexDirection: "row", justifyContent: "space-between" },
   mitad: { width: "48%" },
-  tarjeta: {
-    backgroundColor: colors.darkGreen,
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 20,
-    height: 120,
-    justifyContent: "space-between",
-  },
-  tarjetaMarca: { color: colors.white, fontSize: 14, fontWeight: "700" },
-  tarjetaNumero: { color: colors.white, fontSize: 18, letterSpacing: 2, fontWeight: "600" },
-  tarjetaFecha: { color: colors.white, fontSize: 12, alignSelf: "flex-end" },
-  selector: { flexDirection: "row", justifyContent: "space-between", marginTop: 20 },
-  opcion: {
-    width: "48%",
+  nota: { fontSize: 13, color: colors.textGray, marginTop: 4 },
+
+  resumen: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-  },
-  opcionActiva: { backgroundColor: colors.darkGreen },
-  opcionTexto: { fontSize: 14, fontWeight: "700", color: colors.textDark },
-  opcionTextoActivo: { color: colors.white },
-  paypalCaja: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 18,
-    marginTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: 24,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    paddingTop: 16,
   },
-  paypalTexto: { fontSize: 13, color: colors.textGray, textAlign: "center", marginBottom: 16 },
-  botonPayPal: {
-    backgroundColor: "#FFC439", // amarillo oficial del botón de PayPal
-    borderRadius: 24,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  botonPayPalTexto: { fontSize: 16, fontWeight: "800", color: "#003087" },
-  seguro: { textAlign: "center", color: colors.greenLogo, fontSize: 12, marginTop: 12, fontWeight: "600" },
+  resumenLabel: { fontSize: 18, fontWeight: "800", color: colors.textDark },
+  resumenMonto: { fontSize: 22, fontWeight: "800", color: colors.textDark },
 });

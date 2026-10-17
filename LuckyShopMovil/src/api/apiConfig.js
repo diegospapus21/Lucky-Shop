@@ -49,6 +49,8 @@ export const endpoints = {
   // Pedidos y pagos
   carrito: `${API_BASE_URL}/carrito`,
   venta: `${API_BASE_URL}/venta`,
+  wompiToken: `${API_BASE_URL}/wompi/token`,
+  wompiPayment: `${API_BASE_URL}/wompi/paymentTest`,
   paypalCreateOrder: `${API_BASE_URL}/paypal/create-order`,
   paypalCaptureOrder: `${API_BASE_URL}/paypal/capture-order`,
 };

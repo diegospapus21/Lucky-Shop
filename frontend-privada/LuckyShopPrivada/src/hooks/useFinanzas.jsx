@@ -22,6 +22,18 @@ async function solicitar(path, { method = "GET", body } = {}) {
   return data;
 }
 
+// Fecha de una ganancia: las creadas desde una venta guardan "fecha" (o solo createdAt),
+// las registradas a mano guardan "fechaMes". Se acepta cualquiera para no perder datos.
+const fechaDeGanancia = (g) => g.fechaMes || g.fecha || g.ventas?.[0]?.idVenta?.fecha || g.createdAt;
+
+// Convierte una fecha en un número de mes (año * 12 + mes) o null si no es válida
+const indiceMes = (fecha) => {
+  if (!fecha) return null;
+  const d = new Date(fecha);
+  if (isNaN(d.getTime())) return null;
+  return d.getFullYear() * 12 + d.getMonth();
+};
+
 /**
  * Hook central de la sección Finanzas.
  * Trae ganancias y gastos desde el backend, calcula la tendencia mensual y
@@ -73,22 +85,43 @@ export function useFinanzas() {
     };
   }, [ganancias, gastos]);
 
-  // Agrupa ganancias y gastos por mes (en orden cronológico) para la gráfica de tendencia
+  // Agrupa ganancias y gastos por mes para la gráfica de tendencia.
+  // Muestra siempre los últimos meses completos (los meses sin movimientos quedan en $0),
+  // así la gráfica no se ve vacía cuando solo hay datos de un mes.
   const tendencia = useMemo(() => {
-    const mapa = new Map();
+    const totales = new Map(); // "YYYY-MM" -> { ingresos, gastos }
 
     const registrar = (fecha, campo, monto) => {
-      if (!fecha) return;
-      const d = new Date(fecha);
-      const clave = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
-      if (!mapa.has(clave)) mapa.set(clave, { clave, mes: NOMBRES_MES[d.getMonth()], ingresos: 0, gastos: 0 });
-      mapa.get(clave)[campo] += Number(monto) || 0;
+      const idx = indiceMes(fecha);
+      if (idx === null) return;
+      if (!totales.has(idx)) totales.set(idx, { ingresos: 0, gastos: 0 });
+      totales.get(idx)[campo] += Number(monto) || 0;
     };
 
-    ganancias.forEach((g) => registrar(g.fechaMes, "ingresos", g.totalGanancias));
-    gastos.forEach((g) => registrar(g.fechaGasto, "gastos", g.cantidadGasto));
+    ganancias.forEach((g) => registrar(fechaDeGanancia(g), "ingresos", g.totalGanancias));
+    gastos.forEach((g) => registrar(g.fechaGasto || g.createdAt, "gastos", g.cantidadGasto));
 
-    return Array.from(mapa.values()).sort((a, b) => a.clave.localeCompare(b.clave));
+    // Rango de meses: desde el más antiguo con datos (máx. 12 meses) hasta el mes actual
+    const hoy = new Date();
+    const mesActual = hoy.getFullYear() * 12 + hoy.getMonth();
+    const conDatos = Array.from(totales.keys());
+    const finRango = Math.max(mesActual, ...conDatos);
+    const inicioRango = Math.max(finRango - 11, Math.min(finRango - 5, ...conDatos));
+
+    const resultado = [];
+    for (let idx = inicioRango; idx <= finRango; idx++) {
+      const anio = Math.floor(idx / 12);
+      const mes = idx % 12;
+      const datos = totales.get(idx) || { ingresos: 0, gastos: 0 };
+      resultado.push({
+        clave: `${anio}-${String(mes + 1).padStart(2, "0")}`,
+        mes: NOMBRES_MES[mes],
+        etiqueta: `${NOMBRES_MES[mes]} ${anio}`,
+        ingresos: Number(datos.ingresos.toFixed(2)),
+        gastos: Number(datos.gastos.toFixed(2)),
+      });
+    }
+    return resultado;
   }, [ganancias, gastos]);
 
   const registrarGasto = useCallback(async (datosGasto) => {
@@ -132,7 +165,7 @@ export function useFinanzas() {
             ? productos[0]?.idProducto?.nombre || "—"
             : `${productos[0]?.idProducto?.nombre || "Producto"} y ${productos.length - 1} más`;
 
-        const fechaReal = primeraVenta?.fecha || g.fechaMes;
+        const fechaReal = primeraVenta?.fecha || fechaDeGanancia(g);
 
         return {
           id: g._id ?? g.id,

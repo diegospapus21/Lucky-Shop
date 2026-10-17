@@ -138,6 +138,7 @@ productosController.updateProducto = async (req, res) => {
       subCategoria,
       estado,
       imagenesExistentes, // URLs que ya existen y el usuario quiere conservar
+      imagenesActualizadas, // "true" si la lista de imágenes enviada es la definitiva (aunque esté vacía)
     } = req.body;
 
     nombre = nombre?.trim();
@@ -166,6 +167,10 @@ productosController.updateProducto = async (req, res) => {
       });
     }
 
+    if (imagenes.length > 5) {
+      return res.status(400).json({ message: "Máximo 5 imágenes por producto" });
+    }
+
     const stockNum = Number(stock);
     let finalEstado = estado;
     if (stockNum <= 0 && (!finalEstado || finalEstado === "activo")) {
@@ -184,10 +189,17 @@ productosController.updateProducto = async (req, res) => {
       estado: finalEstado,
     };
 
-    if (imagenes.length > 0) {
+    // Si el panel avisa que la lista es definitiva, se respeta tal cual (incluso vacía);
+    // si no (clientes antiguos), solo se reemplaza cuando llegan imágenes.
+    const reemplazarImagenes = imagenesActualizadas === "true" || imagenes.length > 0;
+    if (reemplazarImagenes) {
       updateData.imagenes = imagenes;
-      updateData.imagenPresentacion = imagenes[0];
+      updateData.imagenPresentacion = imagenes[0] || "";
     }
+
+    const productoAnterior = reemplazarImagenes
+      ? await productsModel.findById(req.params.id).select("imagenes")
+      : null;
 
     const productoActualizado = await productsModel.findByIdAndUpdate(
       req.params.id,
@@ -197,6 +209,18 @@ productosController.updateProducto = async (req, res) => {
 
     if (!productoActualizado) {
       return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    // Borra de Cloudinary las imágenes que el admin quitó del producto
+    if (productoAnterior?.imagenes?.length) {
+      const quitadas = productoAnterior.imagenes.filter((url) => !imagenes.includes(url));
+      await Promise.all(
+        quitadas.map((url) => {
+          const filename = url.split("/").pop();
+          const publicId = `LuckyShop/${filename.split(".")[0]}`;
+          return cloudinary.uploader.destroy(publicId).catch(() => {});
+        })
+      );
     }
 
     return res.status(200).json({

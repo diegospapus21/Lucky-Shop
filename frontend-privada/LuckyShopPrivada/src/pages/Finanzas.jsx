@@ -137,9 +137,12 @@ export default function Finanzas() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={tendencia}>
                         <XAxis dataKey="mes" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <Tooltip formatter={(valor) => formatoMoneda(valor)} />
-                        <Line type="monotone" dataKey="ingresos" stroke="#5aa06c" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="gastos" stroke="#e19bb0" strokeWidth={2} dot={false} />
+                        <Tooltip
+                          formatter={(valor) => formatoMoneda(valor)}
+                          labelFormatter={(_, payload) => payload?.[0]?.payload?.etiqueta ?? ""}
+                        />
+                        <Line type="monotone" name="Ingresos" dataKey="ingresos" stroke="#5aa06c" strokeWidth={2} dot={{ r: 3 }} />
+                        <Line type="monotone" name="Gastos" dataKey="gastos" stroke="#e19bb0" strokeWidth={2} dot={{ r: 3 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
