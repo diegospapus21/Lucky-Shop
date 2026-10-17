@@ -60,6 +60,11 @@ const CheckoutScreen = ({ route, navigation }) => {
     setNumero(grupos ? grupos.join(" ") : "");
   };
 
+  // Nombre del titular: solo letras (con tildes y ñ) y espacios
+  const formatearTitular = (texto) => {
+    setTitular(texto.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").slice(0, 50));
+  };
+
   // Fecha de expiración con formato MM/AA (agrega la barra sola)
   const formatearCaducidad = (texto) => {
     const digitos = texto.replace(/\D/g, "").slice(0, 4);
@@ -72,11 +77,19 @@ const CheckoutScreen = ({ route, navigation }) => {
     if (!direccion.trim()) return "Ingresa una dirección de envío";
     if (metodo === "tarjeta") {
       const digitos = numero.replace(/\D/g, "");
+      if (!digitos) return "Ingresa el número de tarjeta";
+      if (digitos.length < 13 || digitos.length > 16) return "El número de tarjeta debe tener entre 13 y 16 dígitos";
       if (!titular.trim()) return "Ingresa el nombre que aparece en la tarjeta";
-      if (digitos.length < 13) return "El número de tarjeta no es válido";
+      if (titular.trim().length < 3) return "El nombre en la tarjeta es demasiado corto";
+      if (!caducidad) return "Ingresa la fecha de expiración";
+      if (!/^\d{2}\/\d{2}$/.test(caducidad)) return "La fecha de expiración debe tener el formato MM/AA";
       const mes = Number(caducidad.slice(0, 2));
-      if (!/^\d{2}\/\d{2}$/.test(caducidad) || mes < 1 || mes > 12) return "La fecha de expiración no es válida (MM/AA)";
-      if (cvv.length < 3) return "El CVV no es válido";
+      const anio = 2000 + Number(caducidad.slice(3));
+      const hoy = new Date();
+      if (mes < 1 || mes > 12) return "El mes de expiración debe estar entre 01 y 12";
+      if (anio < hoy.getFullYear() || (anio === hoy.getFullYear() && mes < hoy.getMonth() + 1)) return "La tarjeta está vencida";
+      if (!cvv) return "Ingresa el CVV";
+      if (cvv.length < 3) return "El CVV debe tener 3 o 4 dígitos";
     }
     return null;
   };
@@ -220,10 +233,11 @@ const CheckoutScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.input}
                 value={titular}
-                onChangeText={setTitular}
+                onChangeText={formatearTitular}
                 placeholder="John Doe"
                 placeholderTextColor={colors.textLight}
                 autoCapitalize="words"
+                maxLength={50}
               />
 
               <View style={styles.fila}>

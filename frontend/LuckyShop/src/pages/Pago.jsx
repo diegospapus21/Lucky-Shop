@@ -10,6 +10,42 @@ import { useAuth } from '../context/AuthContext.jsx'
 const BASE_URL = import.meta.env.VITE_API_URL + ''
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID
 
+// ---- Helpers de validación de tarjeta ----
+// Deja solo números
+const soloNumeros = (texto) => texto.replace(/\D/g, '')
+// Deja solo letras (con tildes y ñ) y espacios
+const soloLetras = (texto) => texto.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, '')
+
+// Valida los datos de la tarjeta. Devuelve un objeto con un mensaje por cada campo inválido.
+const validarTarjeta = ({ numeroTarjeta, nombreTarjeta, fechaExpiracion, cvv }) => {
+  const errores = {}
+
+  const digitos = soloNumeros(numeroTarjeta)
+  if (!digitos) errores.numeroTarjeta = 'Ingresa el número de tarjeta'
+  else if (digitos.length < 13 || digitos.length > 16) errores.numeroTarjeta = 'El número de tarjeta debe tener entre 13 y 16 dígitos'
+
+  const nombre = nombreTarjeta.trim()
+  if (!nombre) errores.nombreTarjeta = 'Ingresa el nombre que aparece en la tarjeta'
+  else if (nombre.length < 3) errores.nombreTarjeta = 'El nombre es demasiado corto'
+
+  if (!fechaExpiracion) {
+    errores.fechaExpiracion = 'Ingresa la fecha de expiración'
+  } else if (!/^\d{2}\/\d{2}$/.test(fechaExpiracion)) {
+    errores.fechaExpiracion = 'Usa el formato MM/AA'
+  } else {
+    const mes = Number(fechaExpiracion.slice(0, 2))
+    const anio = 2000 + Number(fechaExpiracion.slice(3))
+    const hoy = new Date()
+    if (mes < 1 || mes > 12) errores.fechaExpiracion = 'El mes debe estar entre 01 y 12'
+    else if (anio < hoy.getFullYear() || (anio === hoy.getFullYear() && mes < hoy.getMonth() + 1)) errores.fechaExpiracion = 'La tarjeta está vencida'
+  }
+
+  if (!cvv) errores.cvv = 'Ingresa el CVV'
+  else if (cvv.length < 3) errores.cvv = 'El CVV debe tener 3 o 4 dígitos'
+
+  return errores
+}
+
 const Pago = () => {
   const { items, total, clearCart } = useCart()
   const { cliente } = useAuth()
@@ -26,6 +62,8 @@ const Pago = () => {
   const [nombreTarjeta, setNombreTarjeta] = useState('')
   const [fechaExpiracion, setFechaExpiracion] = useState('')
   const [cvv, setCvv] = useState('')
+  // Campos de la tarjeta que el usuario ya tocó (para mostrar sus errores)
+  const [tocados, setTocados] = useState({})
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -34,6 +72,31 @@ const Pago = () => {
   const totalFinal = total + COSTO_ENVIO
 
   const direccionFinal = direccionEnvio === 'misma' ? editedAddress : nuevaDireccion
+
+  // Errores de la tarjeta (se recalculan en cada render)
+  const erroresTarjeta = validarTarjeta({ numeroTarjeta, nombreTarjeta, fechaExpiracion, cvv })
+  const tarjetaValida = Object.keys(erroresTarjeta).length === 0
+  const tocar = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }))
+  const errorDe = (campo) => (tocados[campo] ? erroresTarjeta[campo] : '')
+
+  // Formateadores: bloquean caracteres no permitidos mientras el usuario escribe
+  const handleNumeroTarjeta = (e) => {
+    const digitos = soloNumeros(e.target.value).slice(0, 16)
+    setNumeroTarjeta((digitos.match(/.{1,4}/g) || []).join(' '))
+  }
+  const handleNombreTarjeta = (e) => setNombreTarjeta(soloLetras(e.target.value).slice(0, 50))
+  const handleFechaExpiracion = (e) => {
+    const digitos = soloNumeros(e.target.value).slice(0, 4)
+    setFechaExpiracion(digitos.length > 2 ? `${digitos.slice(0, 2)}/${digitos.slice(2)}` : digitos)
+  }
+  const handleCvv = (e) => setCvv(soloNumeros(e.target.value).slice(0, 4))
+
+  const claseInput = (campo, extra = '') =>
+    `w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-1 ${extra} ${
+      errorDe(campo)
+        ? 'border-red-400 focus:border-red-400 focus:ring-red-400'
+        : 'border-gray-300 focus:border-pink-400 focus:ring-pink-400'
+    }`
 
   // Registra el carrito y la venta en el backend una vez que el pago fue aprobado.
   // La usan todos los métodos de pago (tarjeta, efectivo, transacción y PayPal).
@@ -140,8 +203,16 @@ const Pago = () => {
 
   const handlePago = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
+
+    // Con tarjeta no se puede pagar si falta algún dato o alguno es inválido
+    if (metodoPago === 'tarjeta' && !tarjetaValida) {
+      setTocados({ numeroTarjeta: true, nombreTarjeta: true, fechaExpiracion: true, cvv: true })
+      setError('Completa correctamente todos los datos de la tarjeta para continuar')
+      return
+    }
+
+    setLoading(true)
 
     try {
       if (metodoPago === 'tarjeta') {
@@ -151,8 +222,8 @@ const Pago = () => {
         const token = tokenData.access_token
 
         const formData = {
-          tarjeta: numeroTarjeta,
-          nombre: nombreTarjeta,
+          tarjeta: soloNumeros(numeroTarjeta),
+          nombre: nombreTarjeta.trim(),
           vencimiento: fechaExpiracion,
           cvv: cvv,
           monto: totalFinal
@@ -227,23 +298,27 @@ const Pago = () => {
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Número de tarjeta</label>
                       <div className="relative">
-                        <input type="text" placeholder="1234 5678 9012 3456" value={numeroTarjeta} onChange={(e) => setNumeroTarjeta(e.target.value)} className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-400" />
+                        <input type="text" inputMode="numeric" autoComplete="cc-number" maxLength={19} placeholder="1234 5678 9012 3456" value={numeroTarjeta} onChange={handleNumeroTarjeta} onBlur={() => tocar('numeroTarjeta')} className={claseInput('numeroTarjeta')} />
                         <span className="absolute right-3 top-2.5 text-gray-400"></span>
                       </div>
+                      {errorDe('numeroTarjeta') && <p className="text-xs text-red-500 mt-1">{errorDe('numeroTarjeta')}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre en la tarjeta</label>
-                        <input type="text" placeholder="John Doe" value={nombreTarjeta} onChange={(e) => setNombreTarjeta(e.target.value)} className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-400" />
+                        <input type="text" autoComplete="cc-name" maxLength={50} placeholder="John Doe" value={nombreTarjeta} onChange={handleNombreTarjeta} onBlur={() => tocar('nombreTarjeta')} className={claseInput('nombreTarjeta')} />
+                        {errorDe('nombreTarjeta') && <p className="text-xs text-red-500 mt-1">{errorDe('nombreTarjeta')}</p>}
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">Fecha de expiración</label>
-                          <input type="text" placeholder="05/27" value={fechaExpiracion} onChange={(e) => setFechaExpiracion(e.target.value)} className="w-full border border-gray-300 rounded-md py-2 px-3 text-center focus:outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-400" />
+                          <input type="text" inputMode="numeric" autoComplete="cc-exp" maxLength={5} placeholder="05/27" value={fechaExpiracion} onChange={handleFechaExpiracion} onBlur={() => tocar('fechaExpiracion')} className={claseInput('fechaExpiracion', 'text-center')} />
+                          {errorDe('fechaExpiracion') && <p className="text-xs text-red-500 mt-1">{errorDe('fechaExpiracion')}</p>}
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-600 mb-1">CVV</label>
-                          <input type="text" placeholder="123" value={cvv} onChange={(e) => setCvv(e.target.value)} className="w-full border border-gray-300 rounded-md py-2 px-3 text-center focus:outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-400" />
+                          <input type="password" inputMode="numeric" autoComplete="cc-csc" maxLength={4} placeholder="123" value={cvv} onChange={handleCvv} onBlur={() => tocar('cvv')} className={claseInput('cvv', 'text-center')} />
+                          {errorDe('cvv') && <p className="text-xs text-red-500 mt-1">{errorDe('cvv')}</p>}
                         </div>
                       </div>
                     </div>
@@ -404,11 +479,16 @@ const Pago = () => {
               ) : (
                 <button 
                   onClick={handlePago}
-                  disabled={loading}
+                  disabled={loading || (metodoPago === 'tarjeta' && !tarjetaValida)}
                   className="w-full bg-[#0a192f] hover:bg-[#112240] text-white py-3.5 rounded-xl font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Procesando...' : `Pagar ahora $${totalFinal.toFixed(2)}`}
                 </button>
+              )}
+              {metodoPago === 'tarjeta' && !tarjetaValida && (
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  Completa todos los datos de la tarjeta para poder pagar
+                </p>
               )}
             </div>
           </div>
