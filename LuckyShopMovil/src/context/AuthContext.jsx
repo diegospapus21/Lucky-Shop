@@ -5,10 +5,14 @@
  * useContext). Guarda el cliente logueado, su token JWT y expone las acciones
  * de login / logout / verificación de sesión.
  *
- * El token se conserva en AsyncStorage para que la sesión sobreviva al cerrar y
- * reabrir la app. Como el backend originalmente entrega el JWT en una cookie
- * (pensado para la web), en móvil también lo recibimos en el cuerpo de la
- * respuesta y lo enviamos en el header Authorization: Bearer <token>.
+ * Seguridad: la sesión solo dura mientras la app esté abierta. Si el usuario cierra
+ * la app y la vuelve a abrir, el token anterior se invalida en el servidor y se
+ * borra del teléfono (hay que iniciar sesión de nuevo). Para que la sesión sí
+ * sobreviva al cerrar la app, cambia CERRAR_SESION_AL_ABRIR a false.
+ *
+ * Como el backend entrega el JWT en una cookie (pensado para la web), en móvil lo
+ * recibimos en el cuerpo de la respuesta y lo enviamos en el header
+ * Authorization: Bearer <token>.
  */
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
@@ -23,6 +27,10 @@ import {
 } from "../utils/storage";
 
 const AuthContext = createContext(null);
+
+// true  = al abrir la app siempre se pide iniciar sesión (el token anterior se invalida)
+// false = la sesión se conserva entre aperturas de la app (mientras el token no venza)
+const CERRAR_SESION_AL_ABRIR = true;
 
 export const AuthProvider = ({ children }) => {
   const [cliente, setCliente] = useState(null); // { _id, name, email } | null
@@ -67,10 +75,26 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Al abrir la app: primero mostramos el usuario cacheado (para no parpadear) y
-  // luego validamos contra el backend.
+  // Al abrir la app:
+  //  - si CERRAR_SESION_AL_ABRIR es true, se invalida en el servidor el token que haya
+  //    quedado guardado y se borra del teléfono (sesión cerrada).
+  //  - si no, mostramos el usuario cacheado (para no parpadear) y validamos contra el backend.
   useEffect(() => {
     (async () => {
+      if (CERRAR_SESION_AL_ABRIR) {
+        try {
+          // apiFetch adjunta el token guardado; el backend lo revoca
+          await apiFetch(endpoints.logout, { method: "POST" });
+        } catch (error) {
+          // Sin conexión: igual se borra la sesión local
+        }
+        await limpiarSesion();
+        setCliente(null);
+        setToken(null);
+        setCargandoSesion(false);
+        return;
+      }
+
       const usuarioCache = await obtenerUsuario();
       if (usuarioCache) setCliente(usuarioCache);
       await verificarSesion();
@@ -112,7 +136,7 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * cerrarSesion
-   * Limpia la sesión local y notifica al backend.
+   * Notifica al backend (que invalida el token) y limpia la sesión local.
    */
   const cerrarSesion = useCallback(async () => {
     try {

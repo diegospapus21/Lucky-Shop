@@ -4,6 +4,36 @@ import { useState, useEffect } from 'react'
 // URL base de la API backend
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
+// ───── Validación de fechas de promociones ─────
+// Fecha de hoy (YYYY-MM-DD) en la hora local del navegador
+const hoyISO = () => new Date().toLocaleDateString('en-CA')
+
+const MAX_DIAS_PROMOCION = 365 // una promoción no puede durar más de un año
+
+const diasEntre = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000)
+
+// ¿Es una fecha real con formato YYYY-MM-DD? (rechaza cosas como 2026-02-31)
+const fechaValida = (d) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return false
+  const f = new Date(`${d}T00:00:00Z`)
+  return !Number.isNaN(f.getTime()) && f.toISOString().slice(0, 10) === d
+}
+
+// Devuelve un mensaje de error o null si las fechas tienen sentido.
+// "original" son las fechas que ya tenía la promoción (al editar): solo se rechazan
+// fechas pasadas si el usuario las CAMBIÓ, para poder editar el descuento de una promo ya iniciada.
+const validarFechasPromocion = (inicio, fin, original = null) => {
+  if (!fechaValida(inicio) || !fechaValida(fin)) return 'Las fechas no son válidas.'
+  const hoy = hoyISO()
+  const cambioInicio = !original || original.fechaInicio !== inicio
+  const cambioFin = !original || original.fechaFin !== fin
+  if (cambioInicio && inicio < hoy) return 'La fecha de inicio no puede ser una fecha pasada.'
+  if (cambioFin && fin < hoy) return 'La fecha fin no puede ser una fecha pasada.'
+  if (fin < inicio) return 'La fecha fin no puede ser anterior a la de inicio.'
+  if (diasEntre(inicio, fin) > MAX_DIAS_PROMOCION) return 'La promoción no puede durar más de un año.'
+  return null
+}
+
 // Componente modal para el registro de nuevas promociones
 const PromoModal = ({ onClose, onCreated }) => {
   // Lista de productos obtenidos de la API para el selector
@@ -49,14 +79,15 @@ const PromoModal = ({ onClose, onCreated }) => {
       setError('Completa todos los campos.')
       return
     }
-    // Validación del rango permitido para el porcentaje
-    if (Number(form.descuento) < 1 || Number(form.descuento) > 99) {
-      setError('El descuento debe estar entre 1 y 99.')
+    // Validación del rango permitido para el porcentaje (número entero)
+    if (!Number.isInteger(Number(form.descuento)) || Number(form.descuento) < 1 || Number(form.descuento) > 99) {
+      setError('El descuento debe ser un número entero entre 1 y 99.')
       return
     }
-    // Validación de coherencia de fechas
-    if (new Date(form.fechaFin) < new Date(form.fechaInicio)) {
-      setError('La fecha fin no puede ser anterior a la de inicio.')
+    // Validación de fechas: no pasadas, fin posterior al inicio y duración razonable
+    const errorFechas = validarFechasPromocion(form.fechaInicio, form.fechaFin)
+    if (errorFechas) {
+      setError(errorFechas)
       return
     }
 
@@ -125,11 +156,11 @@ const PromoModal = ({ onClose, onCreated }) => {
           <div className="pm-field-row">
             <div className="pm-field-group">
               <label>Fecha inicio</label>
-              <input type="date" name="fechaInicio" value={form.fechaInicio} onChange={handleChange} className="pm-input" />
+              <input type="date" name="fechaInicio" value={form.fechaInicio} min={hoyISO()} onChange={handleChange} className="pm-input" />
             </div>
             <div className="pm-field-group">
               <label>Fecha fin</label>
-              <input type="date" name="fechaFin" value={form.fechaFin} onChange={handleChange} className="pm-input" />
+              <input type="date" name="fechaFin" value={form.fechaFin} min={form.fechaInicio && form.fechaInicio > hoyISO() ? form.fechaInicio : hoyISO()} onChange={handleChange} className="pm-input" />
             </div>
           </div>
 

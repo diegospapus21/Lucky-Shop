@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { limpiarMarcaSesion } from '../utils/sesionVentana.js'
 
 // Importación de activos gráficos e iconos para la barra de navegación lateral
 import logosite from '../assets/LogoNegro-removebg-preview.png'
@@ -35,6 +36,8 @@ const SideBar = () => {
     } catch {
       // Si la petición falla, igual limpiamos la sesión local
     } finally {
+      limpiarMarcaSesion()
+      // Limpieza de datos viejos de versiones anteriores
       localStorage.removeItem('luckyshop_token')
       localStorage.removeItem('luckyshop_user')
       sessionStorage.removeItem('luckyshop_token')

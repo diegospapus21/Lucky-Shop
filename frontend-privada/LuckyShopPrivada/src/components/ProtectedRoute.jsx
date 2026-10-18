@@ -2,6 +2,7 @@
 // antes de mostrar el contenido protegido.
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
+import { sesionPermitida } from '../utils/sesionVentana.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -19,6 +20,16 @@ const ProtectedRoute = ({ userType, children }) => {
 
     const verifySession = async () => {
       try {
+        // Si es una ventana nueva sin sesión propia (se cerró la ventana y se volvió a abrir),
+        // la sesión que quedó abierta en el servidor se cierra y se pide iniciar sesión de nuevo
+        const permitida = await sesionPermitida()
+        if (!isMounted) return
+        if (!permitida) {
+          await fetch(`${BASE_URL}/logout`, { method: 'POST', credentials: 'include' }).catch(() => {})
+          if (isMounted) setStatus('unauthorized')
+          return
+        }
+
         const res = await fetch(checkEndpoint, {
           method: 'GET',
           credentials: 'include',

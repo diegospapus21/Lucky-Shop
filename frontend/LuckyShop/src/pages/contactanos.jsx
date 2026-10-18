@@ -146,6 +146,24 @@ const styles = {
     transition: "background 0.2s, transform 0.1s",
     boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
   },
+  // Borde rojo cuando un campo tiene un error
+  inputError: {
+    boxShadow: "0 0 0 2px #dc2626",
+  },
+  // Texto de error debajo de cada campo
+  errorTexto: {
+    color: "#7f1d1d",
+    fontSize: "12px",
+    fontWeight: "600",
+    marginTop: "4px",
+  },
+  // Contador de caracteres del mensaje
+  contador: {
+    fontSize: "11px",
+    color: "#555",
+    textAlign: "right",
+    marginTop: "2px",
+  },
   // Aviso verde: mensaje enviado correctamente
   alertSuccess: {
     background: "#d1fae5",
@@ -168,6 +186,62 @@ const styles = {
   },
 };
 
+// ───── Validaciones del formulario ─────
+const MAX_NOMBRE = 60;
+const MAX_CORREO = 100;
+const TELEFONO_DIGITOS = 8; // teléfonos de El Salvador: 8 dígitos
+const MIN_MENSAJE = 10;
+const MAX_MENSAJE = 500;
+
+// Nombre: solo letras (con tildes y ñ) y espacios — se eliminan números y símbolos al escribir
+const limpiarNombre = (t) =>
+  t.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").replace(/\s{2,}/g, " ").slice(0, MAX_NOMBRE);
+
+// Teléfono: solo números (se eliminan letras, espacios, guiones y símbolos)
+const limpiarTelefono = (t) => t.replace(/\D/g, "").slice(0, TELEFONO_DIGITOS);
+
+// Correo: sin espacios
+const limpiarCorreo = (t) => t.replace(/\s/g, "").slice(0, MAX_CORREO);
+
+// Mensaje: se permiten letras, números y la puntuación normal;
+// se eliminan caracteres especiales peligrosos como < > { } [ ] \ | ^ ~ ` $
+const limpiarMensaje = (t) => t.replace(/[<>{}\[\]\\|^~`$]/g, "").slice(0, MAX_MENSAJE);
+
+const LIMPIADORES = {
+  nombre: limpiarNombre,
+  telefono: limpiarTelefono,
+  correo: limpiarCorreo,
+  descripcion: limpiarMensaje,
+};
+
+// Revisa todos los campos y devuelve un objeto con el mensaje de error de cada campo inválido
+const validarFormulario = ({ nombre, correo, telefono, descripcion }) => {
+  const errores = {};
+
+  const nom = nombre.trim();
+  if (!nom) errores.nombre = "Ingresa tu nombre.";
+  else if (nom.length < 3) errores.nombre = "El nombre debe tener al menos 3 letras.";
+  else if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(\s[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$/.test(nom))
+    errores.nombre = "El nombre solo puede contener letras.";
+
+  // El teléfono es opcional, pero si lo escribe debe tener 8 números
+  if (telefono && !new RegExp(`^\\d{${TELEFONO_DIGITOS}}$`).test(telefono))
+    errores.telefono = `El teléfono debe tener ${TELEFONO_DIGITOS} números (solo números).`;
+
+  if (!correo) errores.correo = "Ingresa tu correo.";
+  else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(correo) || correo.includes(".."))
+    errores.correo = "Ingresa un correo válido (ej. nombre@correo.com).";
+
+  const msg = descripcion.trim();
+  if (!msg) errores.descripcion = "Escribe tu mensaje.";
+  else if (msg.length < MIN_MENSAJE)
+    errores.descripcion = `El mensaje debe tener al menos ${MIN_MENSAJE} caracteres.`;
+  else if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(msg))
+    errores.descripcion = "El mensaje debe contener texto, no solo números o símbolos.";
+
+  return errores;
+};
+
 // Formulario de contacto: envía los datos a Formspree (servicio externo de envío de correos)
 function ContactForm() {
   // Datos escritos por el usuario en el formulario
@@ -178,21 +252,31 @@ function ContactForm() {
     descripcion: "",
   });
 
+  const [tocados, setTocados] = useState({}); // Campos que el usuario ya tocó (para mostrar sus errores)
+  const errores = validarFormulario(form);
+  const errorDe = (campo) => (tocados[campo] ? errores[campo] : "");
+  const tocar = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }));
+
   const [enviando, setEnviando] = useState(false) // true mientras se envía el formulario
   const [mensajeEstado, setMensajeEstado] = useState({ texto: "", tipo: "" }); // Aviso de éxito o error
 
-  // Actualiza el campo correspondiente del formulario según lo que el usuario escribe
+  // Actualiza el campo correspondiente del formulario según lo que el usuario escribe.
+  // Cada campo "limpia" lo que no está permitido (ej. el teléfono solo acepta números).
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const limpiar = LIMPIADORES[name] || ((t) => t);
+    setForm({ ...form, [name]: limpiar(value) });
   };
 
   // Valida los campos obligatorios y envía el formulario a Formspree
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.nombre || !form.correo || !form.descripcion) {
+    // No se envía nada si algún campo es inválido
+    if (Object.keys(errores).length > 0) {
+      setTocados({ nombre: true, correo: true, telefono: true, descripcion: true });
       setMensajeEstado({
-        texto: "Por favor, completa todos los campos obligatorios.",
+        texto: "Revisa los campos marcados en rojo antes de enviar.",
         tipo: "danger",
       });
       return;
@@ -212,10 +296,10 @@ function ContactForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          Nombre: form.nombre,
-          Email: form.correo,
+          Nombre: form.nombre.trim(),
+          Email: form.correo.trim(),
           Telefono: form.telefono,
-          Mensaje: form.descripcion,
+          Mensaje: form.descripcion.trim(),
         }),
       });
 
@@ -226,6 +310,7 @@ function ContactForm() {
         });
         // Limpia el formulario tras un envío exitoso
         setForm({ nombre: "", correo: "", telefono: "", descripcion: "" });
+        setTocados({});
       } else {
         throw new Error("Error en la respuesta del servidor");
       }
@@ -257,19 +342,22 @@ function ContactForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {/* Nombre */}
         <div style={styles.inputGroup}>
           <label style={styles.label}>Nombre</label>
           <input
             type="text"
-            style={styles.input}
+            style={{ ...styles.input, ...(errorDe("nombre") ? styles.inputError : {}) }}
             name="nombre"
             placeholder="Alexia Reyes"
             value={form.nombre}
             onChange={handleChange}
-            required
+            onBlur={() => tocar("nombre")}
+            maxLength={MAX_NOMBRE}
+            autoComplete="name"
           />
+          {errorDe("nombre") && <p style={styles.errorTexto}>{errorDe("nombre")}</p>}
         </div>
 
         {/* Teléfono y Correo en la misma fila */}
@@ -278,24 +366,32 @@ function ContactForm() {
             <label style={styles.label}>Teléfono</label>
             <input
               type="tel"
-              style={styles.input}
+              inputMode="numeric"
+              style={{ ...styles.input, ...(errorDe("telefono") ? styles.inputError : {}) }}
               name="telefono"
-              placeholder="0000 - 0000"
+              placeholder="00000000"
               value={form.telefono}
               onChange={handleChange}
+              onBlur={() => tocar("telefono")}
+              maxLength={TELEFONO_DIGITOS}
+              autoComplete="tel"
             />
+            {errorDe("telefono") && <p style={styles.errorTexto}>{errorDe("telefono")}</p>}
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>Correo</label>
             <input
               type="email"
-              style={styles.input}
+              style={{ ...styles.input, ...(errorDe("correo") ? styles.inputError : {}) }}
               name="correo"
               placeholder="alexi8ye@gmail.com"
               value={form.correo}
               onChange={handleChange}
-              required
+              onBlur={() => tocar("correo")}
+              maxLength={MAX_CORREO}
+              autoComplete="email"
             />
+            {errorDe("correo") && <p style={styles.errorTexto}>{errorDe("correo")}</p>}
           </div>
         </div>
 
@@ -303,13 +399,16 @@ function ContactForm() {
         <div style={styles.inputGroup}>
           <label style={styles.label}>Mensaje</label>
           <textarea
-            style={styles.textarea}
+            style={{ ...styles.textarea, ...(errorDe("descripcion") ? styles.inputError : {}) }}
             name="descripcion"
             placeholder="Hola ..."
             value={form.descripcion}
             onChange={handleChange}
-            required
+            onBlur={() => tocar("descripcion")}
+            maxLength={MAX_MENSAJE}
           />
+          {errorDe("descripcion") && <p style={styles.errorTexto}>{errorDe("descripcion")}</p>}
+          <div style={styles.contador}>{form.descripcion.length}/{MAX_MENSAJE}</div>
         </div>
 
         <div style={styles.btnWrapper}>

@@ -4,10 +4,13 @@ import { v2 as cloudinary } from "cloudinary";
 
 const perfilClienteController = {};
 
+// Solo los datos del perfil que se muestran en pantalla (sin contraseña, intentos, IDs de Cloudinary, etc.)
+const CAMPOS_PERFIL = "name lastName gender birthdate email phone profileImage";
+
 //GET - Obtener los datos del cliente autenticado
 perfilClienteController.getMyProfile = async (req, res) => {
   try {
-    const cliente = await clientsModel.findById(req.user.id).select("-password");
+    const cliente = await clientsModel.findById(req.user.id).select(CAMPOS_PERFIL).lean();
 
     if (!cliente) {
       return res.status(404).json({ message: "Cliente no encontrado" });
@@ -78,7 +81,7 @@ perfilClienteController.updateMyProfile = async (req, res) => {
 
     const clienteActualizado = await clientsModel
       .findByIdAndUpdate(req.user.id, updateData, { new: true })
-      .select("-password");
+      .select(CAMPOS_PERFIL);
 
     return res.status(200).json({ message: "Perfil actualizado", cliente: clienteActualizado });
   } catch (error) {
@@ -90,7 +93,11 @@ perfilClienteController.updateMyProfile = async (req, res) => {
 //GET - Obtener la lista de productos favoritos del cliente
 perfilClienteController.getFavoritos = async (req, res) => {
   try {
-    const cliente = await clientsModel.findById(req.user.id).populate("favoritos");
+    // Solo se traen los datos del producto que necesitan las tarjetas de favoritos
+    const cliente = await clientsModel.findById(req.user.id).select("favoritos").populate({
+      path: "favoritos",
+      select: "nombre precio stock estado descripcion imagenes imagenPresentacion idCategoria subCategoria",
+    });
     if (!cliente) {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }

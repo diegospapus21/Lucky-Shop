@@ -7,7 +7,7 @@ import carritoModel from "../models/carrito.js";
 //GET - Obtener todos los carritos de la base de datos
 carritoController.getCarrito = async (req, res) => {
     try {
-        const carrito = await carritoModel.find()
+        const carrito = await carritoModel.find().select("-__v").lean()
         return res.status(200).json(carrito)
     } catch (error) {
         console.log("error"+error)
@@ -18,7 +18,7 @@ carritoController.getCarrito = async (req, res) => {
 //GET - Obtener un carrito por su ID
 carritoController.getCarritoById = async (req, res) => {
     try {
-        const carrito = await carritoModel.findById(req.params.id)
+        const carrito = await carritoModel.findById(req.params.id).select("-__v").lean()
 
         if (!carrito) {
             return res.status(404).json({ message: "Carrito not found" })
@@ -36,8 +36,10 @@ carritoController.insertCarrito = async (req, res) => {
     try {
         const { idCliente, productos, total, estado } = req.body;
 
+        // El carrito siempre queda a nombre del cliente que inició sesión
+        // (así nadie puede crear carritos a nombre de otra persona)
         const newCarrito = new carritoModel({
-            idCliente,
+            idCliente: req.user?.id || idCliente,
             productos,
             total,
             estado,

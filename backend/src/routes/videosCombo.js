@@ -9,8 +9,8 @@ const router = express.Router();
 // GET  /videosCombo      -> lista todos los combos (panel admin)
 // POST /videosCombo      -> crea un combo nuevo, subiendo el video vía Cloudinary (admin)
 router.route("/")
-.get(videosComboController.getVideosCombo)
-.post(upload.single("video"), videosComboController.insertVideoCombo);
+.get(validateAuthToken("Admin"), videosComboController.getVideosCombo)
+.post(validateAuthToken("Admin"), upload.single("video"), videosComboController.insertVideoCombo);
 
 // GET /videosCombo/mios  -> lista solo los combos del cliente autenticado (página pública "Videos")
 router.route("/mios")
@@ -22,10 +22,10 @@ router.route("/:id/status")
 
 // PATCH /videosCombo/:id/status-admin  -> la admin corrige el estado desde el panel (sin validar dueño)
 router.route("/:id/status-admin")
-.patch(videosComboController.actualizarStatusAdmin);
+.patch(validateAuthToken("Admin"), videosComboController.actualizarStatusAdmin);
 
 // DELETE /videosCombo/:id  -> elimina un combo (panel admin)
 router.route("/:id")
-.delete(videosComboController.deleteVideoCombo);
+.delete(validateAuthToken("Admin"), videosComboController.deleteVideoCombo);
 
 export default router;

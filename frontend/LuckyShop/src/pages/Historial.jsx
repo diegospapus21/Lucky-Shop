@@ -16,24 +16,16 @@ const Historial = () => {
 
   const clienteId = cliente?._id
 
-  // Carga todas las ventas y filtra solo las del cliente actual,
-  // comparando por el idCliente guardado dentro del carrito de cada venta
+  // Carga SOLO las compras del cliente que inició sesión.
+  // El backend ya las filtra (/venta/mias), así no se descargan datos de otros clientes.
   useEffect(() => {
     if (!clienteId) return
 
     const fetchVentas = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/venta`, { credentials: 'include' })
+        const res = await fetch(`${BASE_URL}/venta/mias`, { credentials: 'include' })
         const data = await res.json()
-        // Filtrar ventas del cliente (por idCliente en el carrito)
-        const filtered = Array.isArray(data)
-          ? data.filter(
-              (v) =>
-                v.IdCarrito?.idCliente?._id === clienteId ||
-                v.IdCarrito?.idCliente === clienteId
-            )
-          : []
-        setVentas(filtered)
+        setVentas(res.ok && Array.isArray(data) ? data : [])
       } catch {
         setVentas([])
       } finally {

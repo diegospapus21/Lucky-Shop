@@ -6,8 +6,7 @@
  * navegador raíz lleva automáticamente al usuario a la app.
  *
  * Diseño basado en el Figma: logo, saludo de bienvenida, campos de correo y
- * contraseña, enlace de recuperación, botón verde oscuro, opciones sociales y
- * enlace a registro.
+ * contraseña, enlace de recuperación, botón verde oscuro y enlace a registro.
  */
 import React, { useState } from "react";
 import {
@@ -23,7 +22,6 @@ import {
 import Logo from "../../components/Logo";
 import CustomInput from "../../components/CustomInput";
 import CustomButton from "../../components/CustomButton";
-import SocialButton from "../../components/SocialButton";
 import Notificacion from "../../components/Notificacion";
 import useLogin from "../../hooks/useLogin";
 import useNotificacion from "../../hooks/useNotificacion";
@@ -90,24 +88,6 @@ const LoginScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <CustomButton title="Iniciar sesión" onPress={manejarLogin} loading={cargando} />
-
-          <View style={styles.divisor}>
-            <View style={styles.linea} />
-            <Text style={styles.divisorTexto}>O continúa con</Text>
-            <View style={styles.linea} />
-          </View>
-
-          <View style={styles.social}>
-            <SocialButton
-              proveedor="google"
-              onPress={() => mostrar("Inicio con Google disponible próximamente", "info")}
-            />
-            <View style={{ width: 12 }} />
-            <SocialButton
-              proveedor="apple"
-              onPress={() => mostrar("Inicio con Apple disponible próximamente", "info")}
-            />
-          </View>
         </View>
 
         <TouchableOpacity
@@ -140,10 +120,6 @@ const styles = StyleSheet.create({
   form: { marginTop: 8 },
   olvidaste: { alignSelf: "flex-end", marginBottom: 18 },
   olvidasteTexto: { color: colors.greenLogo, fontSize: 13, fontWeight: "700" },
-  divisor: { flexDirection: "row", alignItems: "center", marginVertical: 22 },
-  linea: { flex: 1, height: 1, backgroundColor: colors.border },
-  divisorTexto: { marginHorizontal: 12, color: colors.textGray, fontSize: 12 },
-  social: { flexDirection: "row" },
   registro: { marginTop: 30, alignItems: "center" },
   registroTexto: { color: colors.textGray, fontSize: 14 },
   registroLink: { color: colors.greenLogo, fontWeight: "800" },

@@ -59,14 +59,14 @@ export function useProductos() {
 
     const url = esEditar ? `${BASE_URL}/productos/${productoId}` : `${BASE_URL}/productos`;
     const method = esEditar ? "PUT" : "POST";
-    const res = await fetch(url, { method, body: fd });
+    const res = await fetch(url, { method, body: fd, credentials: "include" });
     if (!res.ok) throw new Error("Error en la operación");
     await fetchProductos();
     return esEditar;
   }, [fetchProductos]);
 
   const eliminarProducto = useCallback(async (id) => {
-    const res = await fetch(`${BASE_URL}/productos/${id}`, { method: "DELETE" });
+    const res = await fetch(`${BASE_URL}/productos/${id}`, { method: "DELETE", credentials: "include" });
     if (!res.ok) throw new Error("Error al eliminar");
     await fetchProductos();
   }, [fetchProductos]);

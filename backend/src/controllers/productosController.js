@@ -4,6 +4,9 @@ import { v2 as cloudinary } from "cloudinary";
 
 const productosController = {};
 
+// Campos que NO se envían al frontend en las consultas (privacidad y datos internos)
+const CAMPOS_OCULTOS = "-favoritos -__v -updatedAt";
+
 //GET - Obtener todos los productos con filtros opcionales por categoría, estado y nombre
 productosController.getProductos = async (req, res) => {
   try {
@@ -37,7 +40,12 @@ productosController.getProductos = async (req, res) => {
     if (estado) filter.estado = estado;
     if (search) filter.nombre = { $regex: search, $options: "i" };
 
-    const productos = await productsModel.find(filter).sort({ createdAt: -1 });
+    // Se excluye "favoritos" (lista de clientes) y campos internos: ningún frontend los usa
+    const productos = await productsModel
+      .find(filter)
+      .select(CAMPOS_OCULTOS)
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json(productos);
   } catch (error) {
     console.error("getProductos error:", error);
@@ -48,7 +56,10 @@ productosController.getProductos = async (req, res) => {
 //GET - Obtener un producto por su ID
 productosController.getProductoById = async (req, res) => {
   try {
-    const producto = await productsModel.findById(req.params.id);
+    const producto = await productsModel
+      .findById(req.params.id)
+      .select(CAMPOS_OCULTOS)
+      .lean();
     if (!producto) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }

@@ -25,7 +25,7 @@ const LoginCliente = () => {
   // Si veníamos redirigidos desde una ruta privada, regresamos ahí; si no, al inicio.
   const from = location.state?.from?.pathname || '/home'
 
-  const onSubmit = async ({ email, password, recordarme }) => {
+  const onSubmit = async ({ email, password }) => {
     setError('')
     setLoading(true)
     try {
@@ -33,7 +33,7 @@ const LoginCliente = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password, recordarme }),
+        body: JSON.stringify({ email, password }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Error al iniciar sesión')
@@ -138,15 +138,7 @@ const LoginCliente = () => {
               {errors.password && <p className="text-xs text-red-500 mt-1 ml-1">{errors.password.message}</p>}
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-1.5 text-gray-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  {...register('recordarme')}
-                  className="rounded border-gray-300 text-pink-500 focus:ring-pink-400"
-                />
-                Recordarme la contraseña
-              </label>
+            <div className="flex items-center justify-end text-xs pt-1">
               <Link to="/recuperar-password" className="text-pink-500 font-medium hover:underline whitespace-nowrap">
                 ¿Olvidaste la contraseña?
               </Link>

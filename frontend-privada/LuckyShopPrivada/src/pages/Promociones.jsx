@@ -59,6 +59,36 @@ const obtenerImagenProducto = (p) => {
 const normalizar = (t) =>
   String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
+// ───── Validación de fechas de promociones ─────
+// Fecha de hoy (YYYY-MM-DD) en la hora local del navegador
+const hoyISO = () => new Date().toLocaleDateString('en-CA')
+
+const MAX_DIAS_PROMOCION = 365 // una promoción no puede durar más de un año
+
+const diasEntre = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000)
+
+// ¿Es una fecha real con formato YYYY-MM-DD? (rechaza cosas como 2026-02-31)
+const fechaValida = (d) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return false
+  const f = new Date(`${d}T00:00:00Z`)
+  return !Number.isNaN(f.getTime()) && f.toISOString().slice(0, 10) === d
+}
+
+// Devuelve un mensaje de error o null si las fechas tienen sentido.
+// "original" son las fechas que ya tenía la promoción (al editar): solo se rechazan
+// fechas pasadas si el usuario las CAMBIÓ, para poder editar el descuento de una promo ya iniciada.
+const validarFechasPromocion = (inicio, fin, original = null) => {
+  if (!fechaValida(inicio) || !fechaValida(fin)) return 'Las fechas no son válidas.'
+  const hoy = hoyISO()
+  const cambioInicio = !original || original.fechaInicio !== inicio
+  const cambioFin = !original || original.fechaFin !== fin
+  if (cambioInicio && inicio < hoy) return 'La fecha de inicio no puede ser una fecha pasada.'
+  if (cambioFin && fin < hoy) return 'La fecha fin no puede ser una fecha pasada.'
+  if (fin < inicio) return 'La fecha fin no puede ser anterior a la de inicio.'
+  if (diasEntre(inicio, fin) > MAX_DIAS_PROMOCION) return 'La promoción no puede durar más de un año.'
+  return null
+}
+
 // ── Modal para crear / editar promoción ──
 const PromocionModal = ({ promocion, onClose, onGuardado }) => {
   const esEditar = !!promocion
@@ -67,6 +97,9 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
   const [busquedaProducto, setBusquedaProducto] = useState('')
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
   const buscadorRef = useRef(null)
+  // Fechas que ya tenía la promoción (para saber si el admin las cambió al editar)
+  const fechaInicioOriginal = promocion?.fechaInicio ? new Date(promocion.fechaInicio).toISOString().slice(0, 10) : ''
+  const fechaFinOriginal = promocion?.fechaFin ? new Date(promocion.fechaFin).toISOString().slice(0, 10) : ''
   const [form, setForm] = useState({
     descuento: promocion?.descuento || '',
     fechaInicio: promocion?.fechaInicio ? new Date(promocion.fechaInicio).toISOString().slice(0, 10) : '',
@@ -136,12 +169,19 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
       setError('Completa todos los campos.')
       return
     }
-    if (Number(form.descuento) < 1 || Number(form.descuento) > 99) {
-      setError('El descuento debe estar entre 1 y 99.')
+    if (!Number.isInteger(Number(form.descuento)) || Number(form.descuento) < 1 || Number(form.descuento) > 99) {
+      setError('El descuento debe ser un número entero entre 1 y 99.')
       return
     }
-    if (new Date(form.fechaFin) < new Date(form.fechaInicio)) {
-      setError('La fecha fin no puede ser anterior a la de inicio.')
+    // Fechas: no pasadas, fin posterior al inicio y duración razonable.
+    // Al editar, solo se rechazan fechas pasadas si el admin las cambió.
+    const errorFechas = validarFechasPromocion(
+      form.fechaInicio,
+      form.fechaFin,
+      esEditar ? { fechaInicio: fechaInicioOriginal, fechaFin: fechaFinOriginal } : null,
+    )
+    if (errorFechas) {
+      setError(errorFechas)
       return
     }
 
@@ -285,11 +325,11 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
           <div className="pm-field-row">
             <div className="pm-field-group">
               <label>Fecha inicio</label>
-              <input type="date" name="fechaInicio" value={form.fechaInicio} onChange={handleChange} className="pm-input" />
+              <input type="date" name="fechaInicio" value={form.fechaInicio} min={esEditar && fechaInicioOriginal && fechaInicioOriginal < hoyISO() ? undefined : hoyISO()} onChange={handleChange} className="pm-input" />
             </div>
             <div className="pm-field-group">
               <label>Fecha fin</label>
-              <input type="date" name="fechaFin" value={form.fechaFin} onChange={handleChange} className="pm-input" />
+              <input type="date" name="fechaFin" value={form.fechaFin} min={form.fechaInicio && form.fechaInicio > hoyISO() ? form.fechaInicio : hoyISO()} onChange={handleChange} className="pm-input" />
             </div>
           </div>
 

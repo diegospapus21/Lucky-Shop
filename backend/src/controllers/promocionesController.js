@@ -2,13 +2,61 @@ import promocionesModel from "../models/promocionesModel.js";
 
 const promocionesController = {};
 
+// Datos del producto que realmente se necesitan junto a cada promoción
+// (sin la lista de "favoritos" de clientes ni campos internos)
+const POPULATE_PRODUCTO = {
+  path: "idProducto",
+  select: "nombre precio stock estado descripcion imagenes imagenPresentacion idCategoria subCategoria",
+};
+
+const MAX_DIAS_PROMOCION = 365; // una promoción no puede durar más de un año
+
+// Fecha de hoy (YYYY-MM-DD) en la hora de El Salvador, para no rechazar "hoy" por la zona horaria del servidor
+const hoyISO = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "America/El_Salvador" });
+
+// Toma solo la parte YYYY-MM-DD de una fecha (string o Date); devuelve null si no es válida
+const soloDia = (valor) => {
+  const texto = valor instanceof Date ? valor.toISOString() : String(valor || "");
+  const dia = texto.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return null;
+  const f = new Date(`${dia}T00:00:00Z`);
+  return Number.isNaN(f.getTime()) || f.toISOString().slice(0, 10) !== dia ? null : dia;
+};
+
+const diasEntre = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000);
+
+// Valida que las fechas tengan sentido. Devuelve un mensaje de error o null si todo está bien.
+//  - fechaInicio y fechaFin deben ser fechas reales
+//  - la fecha de inicio y la fecha fin no pueden ser pasadas (solo se revisan si cambiaron,
+//    para poder editar el descuento de una promoción que ya inició o que ya venció)
+//  - la fecha fin no puede ser anterior a la de inicio
+//  - la duración máxima es de un año
+const validarFechasPromocion = (inicio, fin, original = null) => {
+  const dIni = soloDia(inicio);
+  const dFin = soloDia(fin);
+  if (!dIni || !dFin) return "Las fechas de la promoción no son válidas";
+
+  const hoy = hoyISO();
+  const cambioInicio = !original || soloDia(original.fechaInicio) !== dIni;
+  const cambioFin = !original || soloDia(original.fechaFin) !== dFin;
+
+  if (cambioInicio && dIni < hoy) return "La fecha de inicio no puede ser una fecha pasada";
+  if (cambioFin && dFin < hoy) return "La fecha fin no puede ser una fecha pasada";
+  if (dFin < dIni) return "La fecha fin no puede ser anterior a la de inicio";
+  if (diasEntre(dIni, dFin) > MAX_DIAS_PROMOCION) return "La promoción no puede durar más de un año";
+  return null;
+};
+
 // GET ALL — para el apartado de promociones del admin
 promocionesController.getPromociones = async (req, res) => {
   try {
     const promociones = await promocionesModel
       .find()
-      .populate("idProducto")
-      .sort({ createdAt: -1 });
+      .select("-__v -updatedAt")
+      .populate(POPULATE_PRODUCTO)
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json(promociones);
   } catch (error) {
     console.error("getPromociones error:", error);
@@ -26,7 +74,9 @@ promocionesController.getPromocionesActivas = async (req, res) => {
         fechaInicio: { $lte: ahora },
         fechaFin: { $gte: ahora },
       })
-      .populate("idProducto");
+      .select("idProducto descuento fechaInicio fechaFin")
+      .populate(POPULATE_PRODUCTO)
+      .lean();
     return res.status(200).json(promociones);
   } catch (error) {
     console.error("getPromocionesActivas error:", error);
@@ -49,10 +99,9 @@ promocionesController.insertPromocion = async (req, res) => {
       return res.status(400).json({ message: "Descuento inválido (1-99)" });
     }
 
-    if (new Date(fechaFin) < new Date(fechaInicio)) {
-      return res
-        .status(400)
-        .json({ message: "La fecha fin no puede ser anterior a la de inicio" });
+    const errorFechas = validarFechasPromocion(fechaInicio, fechaFin);
+    if (errorFechas) {
+      return res.status(400).json({ message: errorFechas });
     }
 
     // La fecha inicio se ajusta al comienzo del día (00:00:00) y la fecha fin
@@ -92,10 +141,20 @@ promocionesController.updatePromocion = async (req, res) => {
       return res.status(400).json({ message: "Descuento inválido (1-99)" });
     }
 
-    if (fechaInicio && fechaFin && new Date(fechaFin) < new Date(fechaInicio)) {
-      return res
-        .status(400)
-        .json({ message: "La fecha fin no puede ser anterior a la de inicio" });
+    // Si se cambian las fechas, se validan contra la promoción actual
+    if (fechaInicio || fechaFin) {
+      const actual = await promocionesModel.findById(req.params.id).select("fechaInicio fechaFin").lean();
+      if (!actual) {
+        return res.status(404).json({ message: "Promoción no encontrada" });
+      }
+      const errorFechas = validarFechasPromocion(
+        fechaInicio || actual.fechaInicio,
+        fechaFin || actual.fechaFin,
+        actual,
+      );
+      if (errorFechas) {
+        return res.status(400).json({ message: errorFechas });
+      }
     }
 
     // Armamos solo los campos que llegaron, ajustando las horas de las fechas

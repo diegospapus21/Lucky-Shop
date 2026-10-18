@@ -58,7 +58,7 @@ export function useBolsas() {
 
     const url = esEditar ? `${BASE_URL}/bolsas/${bolsaId}` : `${BASE_URL}/bolsas`;
     const method = esEditar ? "PUT" : "POST";
-    const res = await fetch(url, { method, body: fd });
+    const res = await fetch(url, { method, body: fd, credentials: "include" });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.message || "Error en la operación");
@@ -68,7 +68,7 @@ export function useBolsas() {
   }, [fetchBolsas]);
 
   const eliminarBolsa = useCallback(async (id) => {
-    const res = await fetch(`${BASE_URL}/bolsas/${id}`, { method: "DELETE" });
+    const res = await fetch(`${BASE_URL}/bolsas/${id}`, { method: "DELETE", credentials: "include" });
     if (!res.ok) throw new Error("Error al eliminar");
     await fetchBolsas();
   }, [fetchBolsas]);
@@ -85,7 +85,7 @@ export function useBolsas() {
     fd.append("estado", bolsa.estado || "activo");
     fd.append("cantidadUnidades", cantidadUnidades);
 
-    const res = await fetch(`${BASE_URL}/bolsas/${bolsa._id}`, { method: "PUT", body: fd });
+    const res = await fetch(`${BASE_URL}/bolsas/${bolsa._id}`, { method: "PUT", body: fd, credentials: "include" });
     if (!res.ok) throw new Error("Error al actualizar la variante");
 
     setBolsas((prev) => prev.map((b) => (b._id === bolsa._id ? { ...b, cantidadUnidades } : b)));

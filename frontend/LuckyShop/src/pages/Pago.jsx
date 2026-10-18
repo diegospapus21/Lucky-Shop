@@ -1,6 +1,5 @@
 //Pago.jsx -- Pagina donde el cliente puede ver la forma de pago
-import { useState, useRef } from 'react'
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
@@ -8,7 +7,6 @@ import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const BASE_URL = import.meta.env.VITE_API_URL + ''
-const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID
 
 // ---- Helpers de validación de tarjeta ----
 // Deja solo números
@@ -99,7 +97,7 @@ const Pago = () => {
     }`
 
   // Registra el carrito y la venta en el backend una vez que el pago fue aprobado.
-  // La usan todos los métodos de pago (tarjeta, efectivo, transacción y PayPal).
+  // La usan todos los métodos de pago (tarjeta, efectivo y transacción).
   const registrarPedido = async (metodo, datosExtra = {}) => {
     // 1. Crear el carrito real en el backend
     const carritoRes = await fetch(`${BASE_URL}/carrito`, {
@@ -141,66 +139,6 @@ const Pago = () => {
     navigate('/historial')
   }
 
-  // Los botones de PayPal guardan sus funciones al montarse; con esta ref
-  // siempre leen la versión más reciente del carrito y la dirección.
-  const registrarPedidoRef = useRef(registrarPedido)
-  registrarPedidoRef.current = registrarPedido
-  const datosPayPalRef = useRef({})
-  datosPayPalRef.current = { items, direccionFinal }
-
-  // PayPal paso 1: el backend crea la orden calculando el total con los precios de la BD
-  const crearOrdenPayPal = async () => {
-    setError('')
-    const { items: itemsActuales, direccionFinal: direccion } = datosPayPalRef.current
-    if (!direccion?.trim()) {
-      setError('Ingresa una dirección de envío antes de pagar')
-      throw new Error('Sin dirección')
-    }
-
-    const res = await fetch(`${BASE_URL}/paypal/create-order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        productos: itemsActuales.map((i) => ({ idProducto: i._id, cantidad: i.cantidad })),
-        incluirEnvio: true,
-        plataforma: 'web',
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.message || 'No se pudo iniciar el pago con PayPal')
-      throw new Error(data.message)
-    }
-    return data.id
-  }
-
-  // PayPal paso 2: el cliente aprobó en la ventana de PayPal, ahora cobramos y registramos la venta
-  const aprobarPagoPayPal = async ({ orderID }) => {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch(`${BASE_URL}/paypal/capture-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ orderID }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.status !== 'COMPLETED') {
-        throw new Error(data.message || 'PayPal no completó el pago')
-      }
-      await registrarPedidoRef.current('paypal', {
-        idTransaccion: data.captureID,
-        idOrdenPayPal: data.orderID,
-      })
-    } catch (err) {
-      setError(err.message || 'Ocurrió un error al procesar el pago con PayPal')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handlePago = async (e) => {
     e.preventDefault()
     setError('')
@@ -216,7 +154,7 @@ const Pago = () => {
 
     try {
       if (metodoPago === 'tarjeta') {
-        const tokenRes = await fetch(`${BASE_URL}/wompi/token`, { method: 'POST' })
+        const tokenRes = await fetch(`${BASE_URL}/wompi/token`, { method: 'POST', credentials: 'include' })
         if (!tokenRes.ok) throw new Error('Error de conexión con procesador de pagos (Token)')
         const tokenData = await tokenRes.json()
         const token = tokenData.access_token
@@ -232,6 +170,7 @@ const Pago = () => {
         const payRes = await fetch(`${BASE_URL}/wompi/paymentTest`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ token, formData })
         })
         if (!payRes.ok) throw new Error('Pago declinado por el procesador')
@@ -261,10 +200,6 @@ const Pago = () => {
   }
 
   return (
-    <PayPalScriptProvider
-      options={{ clientId: PAYPAL_CLIENT_ID || 'test', currency: 'USD', intent: 'capture' }}
-      deferLoading={!PAYPAL_CLIENT_ID}
-    >
     <div className="min-h-screen bg-white">
       <Navbar />
 
@@ -284,10 +219,6 @@ const Pago = () => {
                 <label className={`flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer transition-colors ${metodoPago === 'transaccion' ? 'border-pink-300 bg-pink-50' : 'border-gray-200'}`}>
                   <input type="radio" name="metodoPago" value="transaccion" checked={metodoPago === 'transaccion'} onChange={(e) => setMetodoPago(e.target.value)} className="text-pink-500 focus:ring-pink-500" />
                   <span className="text-sm font-medium">Pago en Transacción</span>
-                </label>
-                <label className={`flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer transition-colors ${metodoPago === 'paypal' ? 'border-pink-300 bg-pink-50' : 'border-gray-200'}`}>
-                  <input type="radio" name="metodoPago" value="paypal" checked={metodoPago === 'paypal'} onChange={(e) => setMetodoPago(e.target.value)} className="text-pink-500 focus:ring-pink-500" />
-                  <span className="text-sm font-medium">PayPal</span>
                 </label>
               </div>
 
@@ -462,33 +393,13 @@ const Pago = () => {
                 </div>
               )}
 
-              {metodoPago === 'paypal' ? (
-                PAYPAL_CLIENT_ID ? (
-                  <div className={loading ? 'opacity-60 pointer-events-none' : ''}>
-                    <PayPalButtons
-                      style={{ layout: 'vertical', shape: 'rect', label: 'pay' }}
-                      forceReRender={[totalFinal]}
-                      createOrder={crearOrdenPayPal}
-                      onApprove={aprobarPagoPayPal}
-                      onCancel={() => setError('Cancelaste el pago con PayPal')}
-                      onError={() => setError((prev) => prev || 'Hubo un problema con PayPal, intenta de nuevo')}
-                    />
-                    {loading && <p className="text-center text-sm text-gray-500 mt-2">Procesando pago...</p>}
-                  </div>
-                ) : (
-                  <div className="bg-yellow-50 text-yellow-700 text-sm p-3 rounded-lg">
-                    Falta configurar VITE_PAYPAL_CLIENT_ID en el .env
-                  </div>
-                )
-              ) : (
-                <button 
-                  onClick={handlePago}
-                  disabled={loading || (metodoPago === 'tarjeta' && !tarjetaValida)}
-                  className="w-full bg-[#0a192f] hover:bg-[#112240] text-white py-3.5 rounded-xl font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Procesando...' : `Pagar ahora $${totalFinal.toFixed(2)}`}
-                </button>
-              )}
+              <button 
+                onClick={handlePago}
+                disabled={loading || (metodoPago === 'tarjeta' && !tarjetaValida)}
+                className="w-full bg-[#0a192f] hover:bg-[#112240] text-white py-3.5 rounded-xl font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Procesando...' : `Pagar ahora $${totalFinal.toFixed(2)}`}
+              </button>
               {metodoPago === 'tarjeta' && !tarjetaValida && (
                 <p className="text-xs text-gray-500 text-center mt-2">
                   Completa todos los datos de la tarjeta para poder pagar
@@ -501,7 +412,6 @@ const Pago = () => {
       
       <Footer />
     </div>
-    </PayPalScriptProvider>
   )
 }
 

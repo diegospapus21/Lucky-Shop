@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import { responderOtrasVentanas } from './utils/sesionVentana.js'
 
 import Login from './pages/Login.jsx'
 import Home from './pages/Home.jsx'
@@ -16,6 +18,9 @@ import EditarInicio from './pages/EditarInicio.jsx'
 import ToastNotificaciones from './components/ToastNotificaciones.jsx'
 
 function App() {
+  // Esta ventana avisa a otras ventanas nuevas que ya hay una sesión abierta
+  useEffect(() => responderOtrasVentanas(), [])
+
   return (
     <Router>
       <ToastNotificaciones />

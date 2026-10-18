@@ -14,7 +14,11 @@ bolsasController.getBolsas = async (req, res) => {
     if (estado) filter.estado = estado;
     if (search) filter.nombre = { $regex: search, $options: "i" };
 
-    const bolsas = await bolsasModel.find(filter).sort({ createdAt: -1 });
+    const bolsas = await bolsasModel
+      .find(filter)
+      .select("-__v -updatedAt")
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json(bolsas);
   } catch (error) {
     console.error("getBolsas error:", error);
@@ -25,7 +29,10 @@ bolsasController.getBolsas = async (req, res) => {
 //GET - Obtener una bolsa por su ID
 bolsasController.getBolsaById = async (req, res) => {
   try {
-    const bolsa = await bolsasModel.findById(req.params.id);
+    const bolsa = await bolsasModel
+      .findById(req.params.id)
+      .select("-__v -updatedAt")
+      .lean();
     if (!bolsa) {
       return res.status(404).json({ message: "Bolsa no encontrada" });
     }

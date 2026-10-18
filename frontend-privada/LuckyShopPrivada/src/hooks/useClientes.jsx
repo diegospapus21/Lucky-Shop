@@ -13,7 +13,7 @@ export function useClientes() {
 
   const fetchClientes = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/clientes`);
+      const res = await fetch(`${BASE_URL}/clientes`, { credentials: "include" });
       const data = await res.json();
       setClientes(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -29,7 +29,7 @@ export function useClientes() {
 
   const eliminarCliente = async (id) => {
     try {
-      const res = await fetch(`${BASE_URL}/clientes/${id}`, { method: "DELETE" });
+      const res = await fetch(`${BASE_URL}/clientes/${id}`, { method: "DELETE", credentials: "include" });
       if (res.ok) {
         setClientes((prev) => prev.filter((c) => c._id !== id));
       }
@@ -45,6 +45,7 @@ export function useClientes() {
       const res = await fetch(`${BASE_URL}/clientes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(datos),
       });
       if (res.ok) {

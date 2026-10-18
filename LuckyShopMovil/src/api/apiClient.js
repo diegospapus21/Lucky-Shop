@@ -20,6 +20,8 @@ import { obtenerToken } from "../utils/storage";
  *
  * - Inyecta Content-Type: application/json salvo que se envíe FormData.
  * - Inyecta el token Bearer si hay sesión activa.
+ * - Envía X-Plataforma: movil para que el backend le entregue el token en el login
+ *   (a la web nunca se le entrega: ella usa solo una cookie httpOnly).
  */
 export const apiFetch = async (url, options = {}) => {
   const token = await obtenerToken();
@@ -27,6 +29,7 @@ export const apiFetch = async (url, options = {}) => {
   const esFormData = options.body instanceof FormData;
 
   const headers = {
+    "X-Plataforma": "movil",
     ...(esFormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),

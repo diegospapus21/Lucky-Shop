@@ -24,7 +24,6 @@ import {
 import Logo from "../../components/Logo";
 import CustomInput from "../../components/CustomInput";
 import CustomButton from "../../components/CustomButton";
-import SocialButton from "../../components/SocialButton";
 import PinInput from "../../components/PinInput";
 import Notificacion from "../../components/Notificacion";
 import AlertModal from "../../components/AlertModal";
@@ -147,18 +146,6 @@ const RegisterScreen = ({ navigation }) => {
             onPress={manejarRegistro}
             loading={cargando}
           />
-
-          <View style={styles.divisor}>
-            <View style={styles.linea} />
-            <Text style={styles.divisorTexto}>O continúa con</Text>
-            <View style={styles.linea} />
-          </View>
-
-          <View style={styles.social}>
-            <SocialButton proveedor="google" onPress={() => mostrar("Disponible próximamente", "info")} />
-            <View style={{ width: 12 }} />
-            <SocialButton proveedor="apple" onPress={() => mostrar("Disponible próximamente", "info")} />
-          </View>
         </View>
 
         <TouchableOpacity style={styles.login} onPress={() => navigation.navigate("Login")}>
@@ -243,10 +230,6 @@ const styles = StyleSheet.create({
   check: { color: colors.white, fontSize: 12, fontWeight: "800" },
   terminosTexto: { flex: 1, fontSize: 12, color: colors.textGray, lineHeight: 18 },
   link: { color: colors.magenta, fontWeight: "700" },
-  divisor: { flexDirection: "row", alignItems: "center", marginVertical: 20 },
-  linea: { flex: 1, height: 1, backgroundColor: colors.border },
-  divisorTexto: { marginHorizontal: 12, color: colors.textGray, fontSize: 12 },
-  social: { flexDirection: "row" },
   login: { marginTop: 24, alignItems: "center" },
   loginTexto: { color: colors.textGray, fontSize: 14 },
   // Modal PIN

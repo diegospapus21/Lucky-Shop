@@ -2,15 +2,14 @@
 import cleintesModel from "../models/clientes.js";
 
 import bcrypt from "bcryptjs";
-import jsonwebtoken from "jsonwebtoken";
 
-import { config } from "../../config.js";
+import { emitirToken, esMovil, obtenerToken, verificarToken } from "../utils/authToken.js";
 
 const loginClientesController = {};
 
 //POST - Iniciar sesión como cliente
 loginClientesController.login = async (req, res) => {
-  const { password, recordarme } = req.body;
+  const { password } = req.body;
   // Normalizamos el correo igual que en el registro (sin espacios, minusculas)
   // para que coincida sin importar como lo haya escrito el usuario
   const email = req.body.email?.trim().toLowerCase();
@@ -59,40 +58,24 @@ loginClientesController.login = async (req, res) => {
     clienteFound.ultimoAcceso = new Date();
     await clienteFound.save();
 
-    // Si "recordarme" está marcado, la sesión dura 30 días; si no, solo 1 día.
-    //Esto es para cuando el cliente marque "Recordar contraseña se guarde"
-    const duracion = recordarme ? "30d" : "1d";
-    const maxAgeMs = recordarme ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    // La sesión dura solo mientras la ventana/app esté abierta (cookie de sesión)
+    // y el token vence a las pocas horas. Ya no existe "recordarme".
+    const token = emitirToken(res, { id: clienteFound._id, userType: "Clientes" });
 
-    const token = jsonwebtoken.sign(
-      { id: clienteFound._id, userType: "Clientes" },
-      config.JWT.secret,
-      { expiresIn: duracion },
-    );
+    const cliente = {
+      _id: clienteFound._id,
+      email: clienteFound.email,
+      name: clienteFound.name,
+      lastName: clienteFound.lastName,
+    };
 
-    // FIX: Configuración de la cookie obligatoria para Vercel / Producción
-    const isProduction = process.env.NODE_ENV === 'production';
+    // La web usa solo la cookie httpOnly (el token NO se le entrega al JavaScript).
+    // La app móvil no maneja cookies, así que solo a ella se le devuelve el token.
+    if (esMovil(req)) {
+      return res.status(200).json({ message: "Login exitoso", token, cliente });
+    }
 
-    res.cookie("authCookie", token, {
-      maxAge: maxAgeMs,
-      httpOnly: true,
-      secure: isProduction,               // 'true' en producción (HTTPS obligatorio)
-      sameSite: isProduction ? 'none' : 'lax', // 'none' permite enviar cookies cross-site entre Vercel y tu backend
-    });
-
-    // La web usa la cookie de arriba. Para la app móvil devolvemos también el
-    // token y los datos del cliente en el cuerpo de la respuesta, de modo que
-    // el móvil pueda guardarlos y enviarlos como Authorization: Bearer.
-    return res.status(200).json({
-      message: "Login exitoso",
-      token,
-      cliente: {
-        _id: clienteFound._id,
-        email: clienteFound.email,
-        name: clienteFound.name,
-        lastName: clienteFound.lastName,
-      },
-    });
+    return res.status(200).json({ message: "Login exitoso", cliente });
   } catch (error) {
     console.log("error" + error);
     return res.status(500).json({ message: "Internal server error" });
@@ -103,29 +86,29 @@ loginClientesController.login = async (req, res) => {
 loginClientesController.checkSession = async (req, res) => {
   try {
     // Aceptamos el token desde la cookie (web) o desde el header Bearer (móvil).
-    const bearer = req.headers.authorization?.startsWith("Bearer ")
-      ? req.headers.authorization.slice(7)
-      : null;
-    const token = req.cookies.authCookie || bearer;
+    const token = obtenerToken(req);
 
     if (!token) {
       return res.status(401).json({ message: "No autenticado" });
     }
 
-    const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    // Valida firma, vencimiento y que no haya sido cerrado (revocado)
+    const decoded = await verificarToken(token);
 
     if (decoded.userType !== "Clientes") {
       return res.status(403).json({ message: "No autorizado" });
     }
 
-    const clienteFound = await cleintesModel.findById(decoded.id).select("-password");
+    const clienteFound = await cleintesModel
+      .findById(decoded.id)
+      .select("email name lastName profileImage ultimoAcceso");
 
     if (!clienteFound) {
       return res.status(401).json({ message: "No autenticado" });
     }
 
-    // Si el cliente tiene la sesión abierta (cookie de 30 días) y no vuelve a
-    // hacer login, actualizamos su último acceso aquí, máximo una vez por hora
+    // Si el cliente tiene la sesión abierta y no vuelve a hacer login,
+    // actualizamos su último acceso aquí, máximo una vez por hora
     const UNA_HORA = 60 * 60 * 1000;
     if (
       !clienteFound.ultimoAcceso ||

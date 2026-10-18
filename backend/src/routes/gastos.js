@@ -1,5 +1,6 @@
 import express from "express"
 import gastosController from "../controllers/gastosController.js";
+import { validateAuthToken } from "../middlewares/validateAuthToken.js";
 
 //Utilizo Router() para definir los metodos (get, post, put)
 //para mi endpoint
@@ -11,8 +12,8 @@ const router = express.Router();
 // POST /api/gastos          Registrar un nuevo gasto
 router
   .route("/")
-  .get(gastosController.getAllGastos)
-  .post(gastosController.insertGastos)
+  .get(validateAuthToken("Admin"), gastosController.getAllGastos)
+  .post(validateAuthToken("Admin"), gastosController.insertGastos)
 
 // Rutas específicas por ID para el endpoint /api/gastos/:id
 // GET    /api/gastos/:id    Obtener un gasto específico
@@ -20,8 +21,8 @@ router
 // DELETE /api/gastos/:id    Eliminar un registro de gasto
 router
   .route("/:id")
-  .get(gastosController.getGastoById)
-  .put(gastosController.updateGastos)
-  .delete(gastosController.deleteGastos);
+  .get(validateAuthToken("Admin"), gastosController.getGastoById)
+  .put(validateAuthToken("Admin"), gastosController.updateGastos)
+  .delete(validateAuthToken("Admin"), gastosController.deleteGastos);
 
 export default router;

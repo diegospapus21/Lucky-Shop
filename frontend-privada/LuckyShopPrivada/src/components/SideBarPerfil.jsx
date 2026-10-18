@@ -1,4 +1,5 @@
-import { Link, useNavigate } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { limpiarMarcaSesion } from '../utils/sesionVentana.js'
 import './SideBarPerfil.css'
 
 // URL base de la API backend para solicitudes de autenticación
@@ -16,6 +17,8 @@ const SideBarPerfil = () => {
     } catch {
       // Si la petición falla por red o servidor, continúa con la limpieza local
     } finally {
+      limpiarMarcaSesion()
+      // Limpieza de datos viejos de versiones anteriores
       localStorage.removeItem('luckyshop_token')
       localStorage.removeItem('luckyshop_user')
       sessionStorage.removeItem('luckyshop_token')

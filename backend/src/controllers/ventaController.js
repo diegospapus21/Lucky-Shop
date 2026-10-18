@@ -1,5 +1,6 @@
 //Controlador para gestionar las ventas y pagos
 import ventaModel from "../models/venta.js";
+import carritoModel from "../models/carrito.js";
 import gananciasModel from "../models/ganancias.js";
 import productsModel from "../models/productos.js";
 import bolsasModel from "../models/bolsas.js";
@@ -78,6 +79,7 @@ ventaController.getVenta = async (req, res) => {
 
     const ventas = await ventaModel
       .find()
+      .select("-__v -updatedAt")
       .sort({ createdAt: -1 })
       .populate(POPULATE_CARRITO);
 
@@ -105,6 +107,43 @@ ventaController.getVenta = async (req, res) => {
   }
 };
 
+//GET - Obtener SOLO las compras del cliente que inició sesión (para su Historial).
+//Antes la web descargaba todas las ventas de todos los clientes y las filtraba en el navegador.
+ventaController.getMisVentas = async (req, res) => {
+  try {
+    // Carritos que pertenecen a este cliente
+    const carritos = await carritoModel
+      .find({ idCliente: req.user.id })
+      .select("_id")
+      .lean();
+
+    const ventas = await ventaModel
+      .find({ IdCarrito: { $in: carritos.map((c) => c._id) } })
+      .select("IdCarrito direcion referencia metodoPago statusPago phone fecha status createdAt")
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "IdCarrito",
+        select: "total productos",
+        populate: {
+          path: "productos.idProducto",
+          select: "nombre precio imagenPresentacion descripcion",
+        },
+      });
+
+    // Se agrega "estado" y "monto" y se quita "cliente" (el cliente ya es quien consulta)
+    const resultado = ventas.map((v) => {
+      const venta = enriquecerVenta(v);
+      delete venta.cliente;
+      return venta;
+    });
+
+    return res.status(200).json(resultado);
+  } catch (error) {
+    console.error("getMisVentas error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 //POST - Insertar una nueva venta y sincronizar la ganancia
 ventaController.insertVenta = async (req, res) => {
   try {
@@ -112,6 +151,14 @@ ventaController.insertVenta = async (req, res) => {
 
     if (!IdCarrito) {
       return res.status(400).json({ message: "IdCarrito es obligatorio para registrar una venta" });
+    }
+
+    // Un cliente solo puede registrar ventas de SU propio carrito
+    if (req.user?.userType === "Clientes") {
+      const carrito = await carritoModel.findById(IdCarrito).select("idCliente").lean();
+      if (!carrito || String(carrito.idCliente) !== String(req.user.id)) {
+        return res.status(403).json({ message: "No autorizado" });
+      }
     }
 
     const newVenta = new ventaModel({ IdCarrito, direcion, referencia, metodoPago, statusPago, phone, fecha, status });

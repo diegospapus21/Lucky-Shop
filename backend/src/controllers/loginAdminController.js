@@ -2,9 +2,8 @@
 import adminModel from "../models/admin.js";
 
 import bcrypt from "bcryptjs";
-import jsonwebtoken from "jsonwebtoken";
 
-import { config } from "../../config.js";
+import { emitirToken, obtenerToken, verificarToken } from "../utils/authToken.js";
 
 const loginAdminController = {};
 
@@ -52,25 +51,14 @@ loginAdminController.login = async (req, res) => {
     }
     
 
+    // Login exitoso: se resetean los intentos fallidos (y se guarda el cambio)
     adminFound.loginAttemps = 0;
     adminFound.timeOut = null;
+    await adminFound.save();
 
-    const token = jsonwebtoken.sign(
-      { id: adminFound._id, userType: "Admin" },
-      config.JWT.secret,
-      { expiresIn: "30d" },
-    );
-
-    // FIX: Configuración obligatoria para despliegues entre dominios (Vercel <-> Backend)
-    const isProduction = process.env.NODE_ENV === 'production';
-    const maxAgeMs = 30 * 24 * 60 * 60 * 1000; // 30 días en ms
-
-    res.cookie("authCookie", token, {
-      maxAge: maxAgeMs,
-      httpOnly: true,
-      secure: isProduction,               // 'true' en producción para HTTPS
-      sameSite: isProduction ? 'none' : 'lax', // 'none' permite enviar cookies cross-site desde Vercel
-    });
+    // La sesión dura solo mientras la ventana esté abierta (cookie de sesión)
+    // y el token vence a las 2 horas.
+    emitirToken(res, { id: adminFound._id, userType: "Admin" });
 
     return res.status(200).json({ message: "Login exitoso" });
   } catch (error) {
@@ -82,19 +70,22 @@ loginAdminController.login = async (req, res) => {
 //GET - Verificar si hay una sesión de admin activa
 loginAdminController.checkSession = async (req, res) => {
   try {
-    const token = req.cookies.authCookie;
+    const token = obtenerToken(req);
 
     if (!token) {
       return res.status(401).json({ message: "No autenticado" });
     }
 
-    const decoded = jsonwebtoken.verify(token, config.JWT.secret);
+    // Valida firma, vencimiento y que no haya sido cerrado (revocado)
+    const decoded = await verificarToken(token);
 
     if (decoded.userType !== "Admin") {
       return res.status(403).json({ message: "No autorizado" });
     }
 
-    const adminFound = await adminModel.findById(decoded.id).select("-password");
+    const adminFound = await adminModel
+      .findById(decoded.id)
+      .select("name lastName email telefono");
 
     if (!adminFound) {
       return res.status(401).json({ message: "No autenticado" });

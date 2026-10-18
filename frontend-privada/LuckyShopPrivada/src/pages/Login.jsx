@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import logoNegro from '../assets/LogoNegro-removebg-preview.png'
+import { marcarSesionActiva, hayMarcaSesion } from '../utils/sesionVentana.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 const CLOVER_BG = 'https://images.unsplash.com/photo-1748357663177-f93b0d158eda?fm=jpg&q=80&w=1200&auto=format&fit=crop'
@@ -9,15 +10,25 @@ const CLOVER_BG = 'https://images.unsplash.com/photo-1748357663177-f93b0d158eda?
 const Login = () => {
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError]           = useState('')
   const [loading, setLoading]       = useState(false)
   const [mostrarPassword, setMostrarPassword] = useState(false)
   const navigate = useNavigate()
 
+  // Si esta ventana ya tiene una sesión abierta (y el servidor la confirma), entra directo al panel
   useEffect(() => {
-    const token = localStorage.getItem('luckyshop_token') || sessionStorage.getItem('luckyshop_token')
-    if (token) navigate('/home')
+    let activo = true
+    const verificar = async () => {
+      if (!hayMarcaSesion()) return
+      try {
+        const res = await fetch(`${BASE_URL}/loginAdmin/checkSession`, { credentials: 'include' })
+        if (res.ok && activo) navigate('/home')
+      } catch {
+        // Sin conexión: se queda en el login
+      }
+    }
+    verificar()
+    return () => { activo = false }
   }, [navigate])
 
   const handleSubmit = async (e) => {
@@ -45,9 +56,8 @@ const Login = () => {
         throw new Error(data.message || 'Email o contraseña incorrectos.')
       }
 
-      const storage = rememberMe ? localStorage : sessionStorage
-      storage.setItem('luckyshop_token', 'session-active')
-      storage.setItem('luckyshop_user', email.trim())
+      // La sesión solo dura mientras esta ventana esté abierta
+      marcarSesionActiva()
 
       navigate('/home')
     } catch (err) {
@@ -130,16 +140,7 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <label className="flex items-center gap-1.5 text-gray-500 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                  />
-                  Recordarme la contraseña
-                </label>
+              <div className="flex items-center justify-end text-xs pt-1">
                 <Link to="/recovery-password" className="text-green-700 font-medium hover:underline whitespace-nowrap">
                   ¿Olvidaste la contraseña?
                 </Link>
