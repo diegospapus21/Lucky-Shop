@@ -1,23 +1,27 @@
 /**
  * ProductCard.jsx
- * Tarjeta reutilizable para mostrar un producto (usada en Home y Categorías).
- * Muestra la imagen de presentación, la categoría, el nombre y el precio, más
- * un botón de favorito (corazón) que cambia de estado visual al presionarlo.
+ * Tarjeta reutilizable para mostrar un producto (Home, Categorías, Promociones,
+ * Guía de regalo). Muestra imagen, categoría, nombre y precio, más un corazón
+ * que agrega o quita el producto de la lista de deseos (favoritos), igual que
+ * en la web.
  *
  * Props:
- *  - producto:    objeto con { nombre, precio, imagenPresentacion, idCategoria }
- *  - onPress:     acción al tocar la tarjeta (ver detalle)
- *  - esFavorito:  si el corazón aparece marcado
- *  - onToggleFav: acción del corazón
+ *  - producto: objeto con { _id, nombre, precio, imagenPresentacion, idCategoria }
+ *  - onPress:  acción al tocar la tarjeta (ver detalle)
  */
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "./Icon";
+import useFavoritos from "../hooks/useFavoritos";
 import { colors } from "../theme/colors";
 
-const ProductCard = ({ producto, onPress, esFavorito = false, onToggleFav }) => {
-  // Imagen: usamos la de presentación o la primera del arreglo; si no hay,
-  // dejamos un color de fondo para no romper el diseño.
+const ProductCard = ({ producto, onPress }) => {
+  // Hook de favoritos: dice si el producto ya es favorito y permite alternarlo.
+  const { esFavorito, toggleFavorito } = useFavoritos();
+  const fav = esFavorito(producto?._id);
+
+  // Imagen: la de presentación o la primera del arreglo; si no hay, queda un
+  // fondo de color para no romper el diseño.
   const uri = producto?.imagenPresentacion || producto?.imagenes?.[0] || null;
   const precio = Number(producto?.precio || 0).toFixed(2);
 
@@ -29,15 +33,22 @@ const ProductCard = ({ producto, onPress, esFavorito = false, onToggleFav }) => 
         ) : (
           <View style={[styles.imagen, styles.imagenVacia]} />
         )}
-        <TouchableOpacity style={styles.favBtn} onPress={onToggleFav} hitSlop={8}>
+
+        {/* Corazón de favoritos (esquina superior derecha de la imagen) */}
+        <TouchableOpacity
+          style={styles.favBtn}
+          onPress={() => toggleFavorito(producto)}
+          hitSlop={8}
+        >
           <Icon
-            name={esFavorito ? "heart" : "heart-outline"}
+            name={fav ? "heart" : "heart-outline"}
             size={16}
-            color={esFavorito ? colors.magenta : colors.textGray}
+            color={fav ? colors.magenta : colors.textGray}
           />
         </TouchableOpacity>
       </View>
 
+      {/* Categoría, nombre y precio */}
       <Text style={styles.categoria}>
         {(producto?.idCategoria || "Producto").toUpperCase()}
       </Text>
@@ -52,6 +63,7 @@ const ProductCard = ({ producto, onPress, esFavorito = false, onToggleFav }) => 
 export default ProductCard;
 
 const styles = StyleSheet.create({
+  // La tarjeta ocupa casi la mitad del ancho para formar una cuadrícula de 2 columnas
   card: { width: "48%", marginBottom: 18 },
   imagenContenedor: {
     borderRadius: 16,
@@ -61,6 +73,7 @@ const styles = StyleSheet.create({
   },
   imagen: { width: "100%", height: 150 },
   imagenVacia: { backgroundColor: colors.pinkSoft },
+  // Botón redondo blanco del corazón, sobre la imagen
   favBtn: {
     position: "absolute",
     top: 8,

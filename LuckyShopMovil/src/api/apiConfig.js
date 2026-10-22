@@ -3,28 +3,17 @@
  * -----------------------------------------------------------------------------
  * Punto ÚNICO de configuración de la API. La app móvil consume EXACTAMENTE la
  * misma base de datos que la app web, a través del mismo backend de Express.
- *
- * IMPORTANTE — cómo elegir el valor de API_BASE_URL:
- *
- *   1) Emulador Android (Android Studio):   http://10.0.2.2:4000/api
- *   2) Navegador / Expo web:                http://localhost:4000/api
- *   3) Teléfono físico con Expo Go:         http://<IP-LOCAL-DE-TU-PC>:4000/api
- *        (ejemplo: http://192.168.0.15:4000/api  — obtén tu IP con `ipconfig`
- *         en Windows o `ifconfig`/`ip a` en Linux/Mac; PC y teléfono deben
- *         estar en la MISMA red WiFi)
- *   4) Backend en Render (DEFAULT):          https://lucky-shop-3.onrender.com/api
- *
- * Por defecto la app usa el backend de Render. Para probar contra tu PC crea un
- * archivo `.env` con EXPO_PUBLIC_API_URL=http://10.0.2.2:4000/api (ver
- * `.env.example`). No hace falta editar este archivo.
  */
+
+// Dirección base del backend. Si existe la variable EXPO_PUBLIC_API_URL (por
+// ejemplo en un archivo .env) se usa esa; si no, se usa el servidor de Render.
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "https://lucky-shop-3.onrender.com/api";
 
 /**
  * endpoints
- * Rutas del backend agrupadas por módulo. Centralizarlas evita repetir strings
- * mágicos por toda la app y facilita el mantenimiento si una ruta cambia.
+ * Rutas del backend agrupadas por módulo. Centralizarlas evita repetir textos
+ * por toda la app y facilita el mantenimiento si una ruta cambia.
  */
 export const endpoints = {
   // Autenticación de clientes
@@ -44,7 +33,8 @@ export const endpoints = {
   // Datos de la tienda
   productos: `${API_BASE_URL}/productos`,
   bolsas: `${API_BASE_URL}/bolsas`,
-  perfil: `${API_BASE_URL}/perfilCliente`,
+  promociones: `${API_BASE_URL}/promociones`, // Se usa en usePromociones (/activas)
+  perfil: `${API_BASE_URL}/perfilCliente`,    // Incluye los favoritos del cliente
 
   // Pedidos y pagos
   carrito: `${API_BASE_URL}/carrito`,

@@ -1,10 +1,10 @@
 /**
  * ProductoDetalleScreen.jsx
  * Pantalla de detalle de un producto. Recibe el producto por parámetros de
- * navegación (route.params.producto). Muestra imagen destacada, nombre, badge de
- * estado, descripción, detalles (material/longitud), precio, un selector de
- * cantidad y el botón "Añadir al carrito". Al final, una sección de productos
- * relacionados de la misma categoría ("También te puede interesar").
+ * navegación (route.params.producto). Muestra imagen, nombre, estado,
+ * descripción, detalles, precio, selector de cantidad y el botón "Añadir al
+ * carrito" con el corazón de favoritos al lado. Al final, una sección de
+ * productos relacionados de la misma categoría ("También te puede interesar").
  */
 import React, { useState } from "react";
 import {
@@ -21,6 +21,7 @@ import ProductCard from "../../components/ProductCard";
 import Notificacion from "../../components/Notificacion";
 import Icon from "../../components/Icon";
 import useProductos from "../../hooks/useProductos";
+import useFavoritos from "../../hooks/useFavoritos";
 import useNotificacion from "../../hooks/useNotificacion";
 import { useCart } from "../../context/CartContext";
 import { colors } from "../../theme/colors";
@@ -28,27 +29,44 @@ import { colors } from "../../theme/colors";
 const ProductoDetalleScreen = ({ route, navigation }) => {
   const { producto } = route.params;
   const { agregar, totalItems } = useCart();
+  const { esFavorito, toggleFavorito } = useFavoritos();
   const { notificacion, mostrar, ocultar } = useNotificacion();
 
+  // Cantidad que el cliente quiere agregar al carrito.
   const [cantidad, setCantidad] = useState(1);
 
-  // Productos relacionados: misma categoría, excluyendo el actual.
+  // Las bolsas de la suerte no son "productos" para el backend de favoritos,
+  // así que a ellas no se les muestra el corazón.
+  const esBolsa = String(producto?.idCategoria || "").toLowerCase() === "bolsas";
+  const fav = esFavorito(producto?._id);
+
+  // Productos relacionados: misma categoría, excluyendo el actual (máximo 4).
   const { productos: relacionados } = useProductos({ categoria: producto?.idCategoria });
   const sugerencias = relacionados.filter((p) => p._id !== producto._id).slice(0, 4);
 
   const uri = producto?.imagenPresentacion || producto?.imagenes?.[0] || null;
   const precio = Number(producto?.precio || 0).toFixed(2);
 
+  // Agrega el producto al carrito con la cantidad elegida y avisa con un mensaje.
   const manejarAgregar = () => {
     agregar(producto, cantidad);
     mostrar(`Se agregó ${cantidad} al carrito`, "success");
   };
 
+  // Marca o quita el producto de la lista de deseos y avisa el resultado.
+  const manejarFavorito = async () => {
+    const eraFav = fav;
+    const ok = await toggleFavorito(producto);
+    if (!ok) mostrar("No se pudo actualizar la lista de deseos", "error");
+    else mostrar(eraFav ? "Quitado de la lista de deseos" : "Agregado a la lista de deseos", "success");
+  };
+
   return (
     <View style={styles.pantalla}>
+      {/* Mensaje flotante (éxito / error) */}
       <Notificacion {...notificacion} onHide={ocultar} />
 
-      {/* Barra superior: regresar + carrito */}
+      {/* Barra superior: flecha para regresar + carrito con contador */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Icon name="arrow-back" size={24} color={colors.textDark} />
@@ -76,7 +94,7 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
         {/* Nombre */}
         <Text style={styles.nombre}>{producto?.nombre}</Text>
 
-        {/* Badge de estado */}
+        {/* Etiqueta de estado: "Más vendido" o "Disponible" */}
         {producto?.masVendido || producto?.estado === "activo" ? (
           <View style={styles.badgeEstado}>
             <Text style={styles.badgeEstadoTexto}>
@@ -85,12 +103,10 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
           </View>
         ) : null}
 
-        {/* Descripción */}
+        {/* Descripción y detalles opcionales (solo se muestran si existen) */}
         {producto?.descripcion ? (
           <Text style={styles.descripcion}>{producto.descripcion}</Text>
         ) : null}
-
-        {/* Detalles opcionales */}
         {producto?.material ? (
           <Text style={styles.detalle}>Material: {producto.material}</Text>
         ) : null}
@@ -101,14 +117,14 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
           <Text style={styles.detalle}>Categoría: {producto.subCategoria}</Text>
         ) : null}
 
-        {/* Precio + selector de cantidad */}
+        {/* Precio + selector de cantidad (− 1 +) */}
         <View style={styles.filaPrecio}>
           <Text style={styles.precio}>${precio}</Text>
 
           <View style={styles.selector}>
             <TouchableOpacity
               style={styles.selectorBtn}
-              onPress={() => setCantidad((c) => Math.max(1, c - 1))}
+              onPress={() => setCantidad((c) => Math.max(1, c - 1))} // nunca baja de 1
             >
               <Icon name="remove" size={18} color={colors.white} />
             </TouchableOpacity>
@@ -122,17 +138,34 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Añadir al carrito */}
-        <CustomButton title="Añadir al carrito" onPress={manejarAgregar} />
+        {/* Fila de acciones: "Añadir al carrito" + corazón de favoritos al lado */}
+        <View style={styles.filaAcciones}>
+          <View style={{ flex: 1 }}>
+            <CustomButton title="Añadir al carrito" onPress={manejarAgregar} />
+          </View>
+          {!esBolsa && (
+            <TouchableOpacity style={styles.favDetalle} onPress={manejarFavorito} activeOpacity={0.8}>
+              <Icon
+                name={fav ? "heart" : "heart-outline"}
+                size={22}
+                color={fav ? colors.magenta : colors.textDark}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {/* También te puede interesar */}
+        {/* Productos relacionados de la misma categoría */}
         {sugerencias.length > 0 && (
           <>
             <View style={styles.seccionHeader}>
               <Text style={styles.seccionTitulo}>También te puede interesar</Text>
+              {/* "Ver más" lleva a la pantalla de Categorías con esta categoría */}
               <TouchableOpacity
                 onPress={() =>
-                  navigation.navigate("Categorias", { screen: "CategoriasHome", params: { slug: producto.idCategoria } })
+                  navigation.navigate("Categorias", {
+                    screen: "CategoriasHome",
+                    params: { slug: producto.idCategoria },
+                  })
                 }
               >
                 <View style={styles.verMasWrap}>
@@ -147,6 +180,7 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
                 <ProductCard
                   key={p._id}
                   producto={p}
+                  // push permite abrir otro detalle encima de este
                   onPress={() => navigation.push("ProductoDetalle", { producto: p })}
                 />
               ))}
@@ -172,6 +206,7 @@ const styles = StyleSheet.create({
     paddingTop: 54,
     paddingBottom: 8,
   },
+  // Circulito con el número de productos del carrito
   badge: {
     position: "absolute",
     top: -6,
@@ -224,6 +259,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     color: colors.textDark,
+  },
+  // Fila con el botón de carrito (ocupa el espacio libre) y el corazón (cuadro fijo)
+  filaAcciones: { flexDirection: "row", alignItems: "center", gap: 10 },
+  favDetalle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    alignItems: "center",
+    justifyContent: "center",
   },
   seccionHeader: {
     flexDirection: "row",
