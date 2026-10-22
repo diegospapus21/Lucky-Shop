@@ -1,296 +1,120 @@
 // Promociones.jsx — página PÚBLICA: muestra los productos que traen promoción vigente.
 // (La gestión de promociones —crear, editar, eliminar— vive en el panel privado.)
 
-import { useState, useEffect, useMemo } from "react";
-import Navbar from "../components/Navbar.jsx";
-import Footer from "../components/Footer.jsx";
-import BotonVolver from "../components/BotonVolver.jsx";
+import { useState, useEffect, useMemo } from 'react'
+import Navbar from '../components/Navbar.jsx'
+import Footer from '../components/Footer.jsx'
+import BotonVolver from '../components/BotonVolver.jsx'
+import ProductCard from '../components/ProductCard.jsx'
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
-// ───── Estilos en línea (misma línea visual que la página de Contáctanos) ─────
-const styles = {
-  page: {
-    minHeight: "100vh",
-    backgroundColor: "#fff",
-    display: "flex",
-    flexDirection: "column",
-  },
-  volverWrapper: {
-    padding: "24px 60px 0",
-  },
-  header: {
-    padding: "20px 60px 10px",
-  },
-  headerTitle: {
-    fontSize: "48px",
-    fontWeight: "900",
-    margin: 0,
-    color: "#111",
-    fontFamily: "'Inter', sans-serif",
-    letterSpacing: "-1px",
-    display: "inline-block",
-    borderBottom: "10px solid #111",
-    paddingBottom: "6px",
-  },
-  subtitulo: {
-    fontSize: "18px",
-    color: "#444",
-    marginTop: "16px",
-    maxWidth: "560px",
-    lineHeight: "1.6",
-  },
-  contenido: {
-    flex: 1,
-    padding: "30px 60px 80px",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-    gap: "28px",
-  },
-  card: {
-    position: "relative",
-    backgroundColor: "#fff",
-    borderRadius: "20px",
-    overflow: "hidden",
-    boxShadow: "0 8px 32px rgba(249,100,180,0.15)",
-    display: "flex",
-    flexDirection: "column",
-  },
-  imagenWrap: {
-    width: "100%",
-    aspectRatio: "1 / 1",
-    backgroundColor: "#FDF2F8",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  imagen: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
-  sinImagen: {
-    color: "#9CA3AF",
-    fontSize: "14px",
-  },
-  badgeDescuento: {
-    position: "absolute",
-    top: "12px",
-    left: "12px",
-    backgroundColor: "#F472B6",
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: "14px",
-    padding: "6px 12px",
-    borderRadius: "20px",
-  },
-  info: {
-    padding: "16px 18px 20px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  nombre: {
-    fontSize: "17px",
-    fontWeight: "800",
-    color: "#111",
-    margin: 0,
-    fontFamily: "'Inter', sans-serif",
-  },
-  filaPrecios: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: "10px",
-    flexWrap: "wrap",
-  },
-  precioFinal: {
-    fontSize: "22px",
-    fontWeight: "900",
-    color: "#111",
-  },
-  precioOriginal: {
-    fontSize: "15px",
-    color: "#9CA3AF",
-    textDecoration: "line-through",
-  },
-  vigencia: {
-    fontSize: "12px",
-    color: "#6B7280",
-    marginTop: "2px",
-  },
-  mensaje: {
-    textAlign: "center",
-    color: "#444",
-    fontSize: "18px",
-    padding: "60px 0",
-  },
-  mensajeError: {
-    textAlign: "center",
-    color: "#991b1b",
-    fontSize: "16px",
-    padding: "40px 0",
-  },
-  btnReintentar: {
-    marginTop: "12px",
-    padding: "10px 28px",
-    borderRadius: "12px",
-    border: "none",
-    backgroundColor: "#F9A8D4",
-    color: "#111",
-    fontWeight: "700",
-    cursor: "pointer",
-  },
-};
+const dinero = (n) => `$${Number(n || 0).toFixed(2)}`
 
-// ───── Helpers ─────
+const Promociones = () => {
+  const [promociones, setPromociones] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-// Fecha corta sin desfase de zona horaria (ej. "15 jul 2026")
-const formatoFecha = (f) =>
-  f
-    ? new Date(f).toLocaleDateString("es-SV", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : "";
-
-const esTextoValido = (v) => typeof v === "string" && v.trim() !== "";
-
-// Imagen del producto: imagenPresentacion o la primera de imagenes[]
-const obtenerImagen = (prod) => {
-  if (!prod) return null;
-  if (esTextoValido(prod.imagenPresentacion)) return prod.imagenPresentacion;
-  if (Array.isArray(prod.imagenes)) {
-    const primera = prod.imagenes.find(esTextoValido);
-    if (primera) return primera;
-  }
-  return null;
-};
-
-const dinero = (n) => `$${Number(n || 0).toFixed(2)}`;
-
-// ───── Tarjeta de un producto en promoción ─────
-function TarjetaPromo({ promo }) {
-  const prod = promo.idProducto;
-  const imagen = obtenerImagen(prod);
-  const precio = Number(prod?.precio ?? 0);
-  const precioFinal = precio * (1 - Number(promo.descuento) / 100);
-
-  return (
-    <div style={styles.card}>
-      <span style={styles.badgeDescuento}>-{promo.descuento}%</span>
-
-      <div style={styles.imagenWrap}>
-        {imagen ? (
-          <img
-            src={imagen}
-            alt={prod?.nombre || "Producto en promoción"}
-            style={styles.imagen}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-        ) : (
-          <span style={styles.sinImagen}>Sin imagen</span>
-        )}
-      </div>
-
-      <div style={styles.info}>
-        <h3 style={styles.nombre}>{prod?.nombre || "Producto"}</h3>
-        <div style={styles.filaPrecios}>
-          <span style={styles.precioFinal}>{dinero(precioFinal)}</span>
-          <span style={styles.precioOriginal}>{dinero(precio)}</span>
-        </div>
-        <span style={styles.vigencia}>Hasta el {formatoFecha(promo.fechaFin)}</span>
-      </div>
-    </div>
-  );
-}
-
-// ───── Página ─────
-export default function Promociones() {
-  const [promociones, setPromociones] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  // Carga las promociones desde el backend
+  // Carga las promociones vigentes desde el backend (misma ruta pública que usa la app móvil)
   const cargarPromociones = async () => {
-    setLoading(true);
-    setError("");
+    setLoading(true)
+    setError('')
     try {
-      // Ruta pública: devuelve solo las promociones vigentes (la misma que usa la app móvil)
-      const res = await fetch(`${BASE_URL}/promociones/activas`);
-      if (!res.ok) throw new Error("No se pudieron cargar las promociones");
-      const data = await res.json();
-      setPromociones(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError("No se pudieron cargar las promociones. Inténtalo de nuevo.");
+      const res = await fetch(`${BASE_URL}/promociones/activas`)
+      if (!res.ok) throw new Error('No se pudieron cargar las promociones')
+      const data = await res.json()
+      setPromociones(Array.isArray(data) ? data : [])
+    } catch {
+      setError('No se pudieron cargar las promociones. Inténtalo de nuevo.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    cargarPromociones();
-  }, []);
+    cargarPromociones()
+  }, [])
 
   // El backend ya devuelve solo las vigentes; aquí se descartan las que perdieron su producto
   // y se ordena con la de mayor descuento primero
-  const vigentes = useMemo(
+  const lista = useMemo(
     () =>
       promociones
         .filter((p) => p.idProducto)
         .sort((a, b) => Number(b.descuento) - Number(a.descuento)),
     [promociones]
-  );
+  )
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
 
-      <div style={styles.volverWrapper}>
-        <BotonVolver />
-      </div>
-
-      <div style={styles.header}>
-        <h1 style={styles.headerTitle}>Promociones</h1>
-        <p style={styles.subtitulo}>
-          Aprovecha los descuentos vigentes en tus accesorios favoritos.
+      <div className="max-w-7xl w-full mx-auto px-6 flex-1">
+        {/* Flecha para regresar al inicio + título pequeño, juntos en una línea (sin subrayado) */}
+        <div className="flex items-center gap-3 pt-6">
+          <BotonVolver />
+          <h1 className="text-2xl font-extrabold text-black m-0">Promociones</h1>
+        </div>
+        <p className="mt-2 text-sm text-gray-500">
+          Una joya es buena, dos son mejor. Explora nuestros descuentos especiales.
         </p>
-      </div>
 
-      <div style={styles.contenido}>
-        {loading && <p style={styles.mensaje}>Cargando promociones...</p>}
+        <div className="py-8">
+          {loading ? (
+            // Estado de carga
+            <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
+              <div className="w-10 h-10 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
+              <p className="text-sm font-medium">Cargando promociones...</p>
+            </div>
+          ) : error ? (
+            // Estado de error con botón para reintentar
+            <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-8 text-center text-red-700 text-sm">
+              <p className="font-semibold mb-3">{error}</p>
+              <button
+                type="button"
+                onClick={cargarPromociones}
+                className="rounded-full bg-pink-100 px-6 py-2 font-semibold text-pink-600 hover:bg-pink-200 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : lista.length === 0 ? (
+            // Sin promociones vigentes
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <p className="text-sm font-medium">No hay promociones vigentes por ahora.</p>
+            </div>
+          ) : (
+            // Mismas tarjetas de producto que el resto del sitio, con el precio ya rebajado
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 sm:gap-6">
+              {lista.map((promo) => {
+                const original = Number(promo.idProducto.precio || 0)
+                const final = Math.round(original * (1 - Number(promo.descuento) / 100) * 100) / 100
 
-        {!loading && error && (
-          <div style={styles.mensajeError}>
-            <p>{error}</p>
-            <button style={styles.btnReintentar} onClick={cargarPromociones}>
-              Reintentar
-            </button>
-          </div>
-        )}
+                return (
+                  <div key={promo._id} className="relative">
+                    {/* Etiqueta con el % de descuento, arriba a la izquierda de la imagen */}
+                    <span className="absolute left-3 top-3 z-10 rounded-full bg-pink-500 px-3 py-1 text-xs font-extrabold text-white">
+                      -{promo.descuento}%
+                    </span>
 
-        {!loading && !error && vigentes.length === 0 && (
-          <p style={styles.mensaje}>
-            Por ahora no hay promociones vigentes. ¡Vuelve pronto!
-          </p>
-        )}
+                    <ProductCard producto={{ ...promo.idProducto, precio: final }} />
 
-        {!loading && !error && vigentes.length > 0 && (
-          <div style={styles.grid}>
-            {vigentes.map((promo) => (
-              <TarjetaPromo key={promo._id} promo={promo} />
-            ))}
-          </div>
-        )}
+                    {/* Precio original tachado */}
+                    <p className="mt-2 text-center text-xs text-gray-500">
+                      Antes <span className="line-through">{dinero(original)}</span>
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <Footer />
     </div>
-  );
+  )
 }
+
+export default Promociones;
