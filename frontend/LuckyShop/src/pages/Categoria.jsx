@@ -17,7 +17,7 @@ const IconoBase = ({ children }) => (
     strokeWidth={1.5}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="w-7 h-7 text-black"
+    className="w-6 h-6 text-black shrink-0"
     aria-hidden="true"
   >
     {children}
@@ -135,14 +135,42 @@ const Categoria = () => {
     <div className="min-h-screen bg-white">
       <Navbar />
 
-      {/* Banner con el título, descripción y filtros de subcategoría de la categoría actual */}
+      {/* Banner con el título y la descripción de la categoría actual.
+          Los botones de subcategoría se dibujan abajo, para no depender del banner */}
       <CategoryBanner
         titulo={config.titulo}
         descripcion={config.descripcion}
-        subcategorias={config.subcategorias}
+        subcategorias={[]}
         subcatActiva={subcatActiva}
         onSubcat={setSubcatActiva}
       />
+
+      {/* Filtros de subcategoría con iconos delgados en negro */}
+      {config.subcategorias?.length > 0 && (
+        <div className="max-w-7xl mx-auto px-6 pt-8 flex flex-wrap items-center justify-center gap-3">
+          {config.subcategorias.map((sub) => {
+            const activa = subcatActiva === sub.value
+
+            return (
+              <button
+                key={sub.value}
+                type="button"
+                aria-pressed={activa}
+                title={activa ? 'Quitar filtro' : `Ver solo ${sub.label}`}
+                onClick={() => setSubcatActiva(activa ? '' : sub.value)}
+                className={`inline-flex items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-semibold text-black transition-colors ${
+                  activa
+                    ? 'border-pink-400 bg-pink-50'
+                    : 'border-gray-200 bg-white hover:border-pink-300 hover:bg-pink-50'
+                }`}
+              >
+                {sub.icon}
+                <span>{sub.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Grilla de productos de la categoría (ya filtrados por subcategoría si aplica) */}
       <div className="max-w-7xl mx-auto px-6 py-10">
@@ -161,8 +189,6 @@ const Categoria = () => {
         ) : productosFiltrados.length === 0 ? (
           // Sin productos que coincidan con la categoría/subcategoría seleccionada
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <span className="text-5xl mb-4 opacity-40"></span>
-          
             <p className="text-sm font-medium">No hay productos en esta categoría</p>
           </div>
         ) : (

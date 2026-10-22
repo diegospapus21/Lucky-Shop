@@ -104,22 +104,6 @@ const CarritoScreen = ({ navigation }) => {
           );
         })}
 
-        {/* Código de promoción */}
-        <View style={styles.promoFila}>
-          <View style={styles.promoInput}>
-            <Icon name="pricetag-outline" size={16} color={colors.textGray} />
-            <TextInput
-              style={styles.promoTexto}
-              value={promo}
-              onChangeText={setPromo}
-              placeholder="Código de promo"
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-          <TouchableOpacity style={styles.promoBtn}>
-            <Text style={styles.promoBtnTexto}>Aplicar</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Resumen */}
         <View style={styles.resumen}>
