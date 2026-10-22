@@ -1,123 +1,86 @@
-// Promociones.jsx — página PÚBLICA: muestra los productos que traen promoción vigente.
-// (La gestión de promociones —crear, editar, eliminar— vive en el panel privado.)
-
-import { useState, useEffect, useMemo } from 'react'
+// Promociones.jsx — página pública con los productos que tienen descuento activo
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
-
-const dinero = (n) => `$${Number(n || 0).toFixed(2)}`
+const BASE_URL = import.meta.env.VITE_API_URL + ''
 
 const Promociones = () => {
-  const [promociones, setPromociones] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [productos, setProductos] = useState([])  // Productos con descuento activo, ya con el % incluido
+  const [loading, setLoading]     = useState(true)
 
-  // Carga las promociones vigentes desde el backend (misma ruta pública que usa la app móvil)
-  const cargarPromociones = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch(`${BASE_URL}/promociones/activas`)
-      if (!res.ok) throw new Error('No se pudieron cargar las promociones')
-      const data = await res.json()
-      setPromociones(Array.isArray(data) ? data : [])
-    } catch {
-      setError('No se pudieron cargar las promociones. Inténtalo de nuevo.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Carga las promociones activas y arma cada producto con su porcentaje de descuento incluido,
+  // para poder pasárselo directo a ProductCard
   useEffect(() => {
-    cargarPromociones()
-  }, [])
+    const fetchPromos = async () => {
+      try {
+        const res  = await fetch(`${BASE_URL}/promociones/activas`, { credentials: 'include' })
+        const data = await res.json()
 
-  // El backend ya devuelve solo las vigentes; aquí se descartan las que perdieron su producto
-  // y se ordena con la de mayor descuento primero
-  const lista = useMemo(
-    () =>
-      promociones
-        .filter((p) => p.idProducto)
-        .sort((a, b) => Number(b.descuento) - Number(a.descuento)),
-    [promociones]
-  )
+        // Cada promo trae { idProducto: {...}, descuento, ... }.
+        const conDescuento = Array.isArray(data)
+          ? data
+              .filter((promo) => promo.idProducto)
+              .map((promo) => ({
+                ...promo.idProducto,
+                descuento: promo.descuento,
+              }))
+          : []
+
+        // Mostramos solo los primeros 8
+        setProductos(conDescuento.slice(0, 8))
+      } catch {
+        setProductos([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPromos()
+  }, [])
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
 
-      <div className="max-w-7xl w-full mx-auto px-8 flex-1">
-        {/* Flecha para regresar al inicio + nombre del apartado (igual que Guía de regalo) */}
-        <div className="pt-6">
-          <Link
-            to="/home"
-            className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-500 font-bold text-lg transition-colors"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            Promociones
-          </Link>
-        </div>
-        <p className="mt-2 text-sm text-gray-500">
-          Una joya es buena, dos son mejor. Explora nuestros descuentos especiales.
-        </p>
-
-        <div className="py-8">
-          {loading ? (
-            // Estado de carga
-            <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
-              <div className="w-10 h-10 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
-              <p className="text-sm font-medium">Cargando promociones...</p>
-            </div>
-          ) : error ? (
-            // Estado de error con botón para reintentar
-            <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-8 text-center text-red-700 text-sm">
-              <p className="font-semibold mb-3">{error}</p>
-              <button
-                type="button"
-                onClick={cargarPromociones}
-                className="rounded-full bg-pink-100 px-6 py-2 font-semibold text-pink-600 hover:bg-pink-200 transition-colors"
-              >
-                Reintentar
-              </button>
-            </div>
-          ) : lista.length === 0 ? (
-            // Sin promociones vigentes
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <p className="text-sm font-medium">No hay promociones vigentes por ahora.</p>
-            </div>
-          ) : (
-            // Mismas tarjetas de producto que el resto del sitio, con el precio ya rebajado
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 sm:gap-6">
-              {lista.map((promo) => {
-                const original = Number(promo.idProducto.precio || 0)
-                const final = Math.round(original * (1 - Number(promo.descuento) / 100) * 100) / 100
-
-                return (
-                  <div key={promo._id} className="relative">
-                    {/* Etiqueta con el % de descuento, arriba a la izquierda de la imagen */}
-                    <span className="absolute left-3 top-3 z-10 rounded-full bg-pink-500 px-3 py-1 text-xs font-extrabold text-white">
-                      -{promo.descuento}%
-                    </span>
-
-                    <ProductCard producto={{ ...promo.idProducto, precio: final }} />
-
-                    {/* Precio original tachado */}
-                    <p className="mt-2 text-center text-xs text-gray-500">
-                      Antes <span className="line-through">{dinero(original)}</span>
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+      {/* Flecha para regresar al inicio */}
+      <div className="max-w-7xl mx-auto px-8 pt-6 w-full">
+        <Link
+          to="/home"
+          className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-500 font-bold text-lg transition-colors"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Promociones
+        </Link>
       </div>
+
+      <section className="max-w-7xl mx-auto px-8 py-8 w-full flex-1">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight mb-8 text-center">
+          Disfruta de nuestros descuentos en los diferentes accesorios
+        </h1>
+
+        {loading ? (
+          // Estado de carga
+          <div className="flex justify-center py-16">
+            <div className="w-10 h-10 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
+          </div>
+        ) : productos.length === 0 ? (
+          // Sin promociones activas en este momento
+          <div className="flex flex-col items-center py-16 text-gray-400">
+            <p className="text-sm font-medium">No hay promociones activas en este momento</p>
+          </div>
+        ) : (
+          // Grilla de productos en promoción (ProductCard ya sabe mostrar el precio tachado con el % de descuento)
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {productos.map((producto) => (
+              <ProductCard key={producto._id} producto={producto} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <Footer />
     </div>
