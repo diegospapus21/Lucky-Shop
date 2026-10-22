@@ -2,7 +2,7 @@
  * PerfilScreen.jsx
  * Pantalla de perfil / "Editar perfil". Muestra el avatar, el nombre y correo
  * REALES del usuario logueado (AuthContext) y una lista de accesos en tarjetas
- * (Términos, Lista de deseos, Ajustes, Videos). Abajo, el botón "Cerrar Sesión".
+ * (Términos, Lista de deseos, Ajustes, Videos, Ayuda). Abajo, el botón "Cerrar Sesión".
  */
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
@@ -23,10 +23,11 @@ const PerfilScreen = ({ navigation }) => {
 
   // Opciones en tarjetas: cada una con su icono y nombre de pantalla destino.
   const opciones = [
-    { icon: "card-outline",     label: "Términos y Condiciones", ruta: "Terminos"    },
-    { icon: "heart-outline",    label: "Lista de deseos",        ruta: "ListaDeseos" },
-    { icon: "create-outline",   label: "Ajustes de cuenta",      ruta: "Ajustes"     },
-    { icon: "videocam-outline", label: "Videos",                 ruta: "Videos"      },
+    { icon: "card-outline",        label: "Términos y Condiciones",             ruta: "Terminos"    },
+    { icon: "heart-outline",       label: "Lista de deseos",                    ruta: "ListaDeseos" },
+    { icon: "create-outline",      label: "Ajustes de cuenta",                  ruta: "Ajustes"     },
+    { icon: "videocam-outline",    label: "Videos",                             ruta: "Videos"      },
+    { icon: "help-circle-outline", label: "¿Necesitas ayuda?", ruta: "Contacto"    },
   ];
 
   return (
@@ -134,6 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 14,
   },
-  opcionLabel: { flex: 1, fontSize: 15, color: colors.textDark, fontWeight: "600" },
+  
+  opcionLabel: { flex: 1, flexShrink: 1, fontSize: 15, color: colors.textDark, fontWeight: "600", marginRight: 8 },
   logoutWrap: { paddingHorizontal: 20, paddingBottom: 20, paddingTop: 6 },
 });

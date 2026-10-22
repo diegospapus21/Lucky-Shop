@@ -119,8 +119,7 @@ const TerminosScreen = ({ navigation }) => {
             </View>
           ))}
 
-          {/* Decoración rosada al final */}
-          <View style={styles.accentRosa} />
+        
         </View>
       </ScrollView>
     </View>
@@ -189,13 +188,5 @@ const styles = StyleSheet.create({
   bullet: { fontSize: 13, color: "#111", lineHeight: 20 },
   itemTexto: { flex: 1, fontSize: 13, color: "#111", lineHeight: 20 },
 
-  accentRosa: {
-    position: "absolute",
-    bottom: 14,
-    right: 14,
-    width: 90,
-    height: 24,
-    backgroundColor: "#F9A8D4",
-    borderRadius: 6,
-  },
+
 });
