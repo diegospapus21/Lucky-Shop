@@ -8,7 +8,6 @@ import '../SideBar.css'
 import '../productosPage.css'
 
 const CATEGORIAS = ['Todo', 'Anillos', 'Pulseras', 'Aretes', 'Charms', 'Bolsas', 'Collares', 'Set', 'Otros']
-const SUBCATEGORIAS = ['Oro', 'Plata', 'Dorado', 'Plateado', 'Multicolor', 'Otro']
 const ESTADOS = ['activo', 'inactivo', 'agotado']
 const MAX_IMAGENES = 5 // mismo límite que el backend (multer)
 
@@ -77,15 +76,11 @@ const DetallesModal = ({ producto, onClose }) => {
                 <p className="pm-info-val">{producto.idCategoria || '—'}</p>
               </div>
               <div>
-                <span className="pm-info-label">Subcategoría</span>
-                <p className="pm-info-val">{producto.subCategoria || '—'}</p>
-              </div>
-            </div>
-            <div className="pm-info-row pm-info-2col">
-              <div>
                 <span className="pm-info-label">Estado</span>
                 <p className="pm-info-val">{producto.estado}</p>
               </div>
+            </div>
+            <div className="pm-info-row">
               <div>
                 <span className="pm-info-label">Cantidad</span>
                 <p className="pm-info-val">{producto.stock} unidades</p>
@@ -122,7 +117,6 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
     stock: stockInicial,
     descripcion: producto?.descripcion || '',
     idCategoria: producto?.idCategoria || '',
-    subCategoria: producto?.subCategoria || SUBCATEGORIAS[0],
     estado: estadoInicial,
   })
   // Lista única de imágenes del producto: las que ya están guardadas (existing: true)
@@ -268,16 +262,6 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
                 </select>
               </div>
               <div className="pm-field-group">
-                <label>Subcategoría</label>
-                <select name="subCategoria" value={form.subCategoria} onChange={handleChange} className="pm-input">
-                  {SUBCATEGORIAS.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="pm-field-row">
-              <div className="pm-field-group">
                 <label>Estado</label>
                 <select name="estado" value={form.estado} onChange={handleChange} className="pm-input">
                   {ESTADOS.map(e => (
@@ -285,6 +269,8 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="pm-field-row">
               <div className="pm-field-group">
                 <label>Cantidad</label>
                 <input
@@ -296,6 +282,22 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
                   className="pm-input"
                 />
               </div>
+              <div className="pm-field-group">
+                <label>Precio</label>
+                <div className="pm-price-input">
+                  <span>$</span>
+                  <input
+                    type="number"
+                    name="precio"
+                    min="0"
+                    step="0.01"
+                    value={form.precio}
+                    onChange={handleChange}
+                    className="pm-input"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
             </div>
             <div className="pm-field-group">
               <label>Descripción</label>
@@ -306,22 +308,6 @@ const FormModal = ({ modo, producto, onClose, onConfirmRequest }) => {
                 className="pm-input pm-textarea"
                 placeholder="Descripción del producto..."
               />
-            </div>
-            <div className="pm-field-group">
-              <label>Precio</label>
-              <div className="pm-price-input">
-                <span>$</span>
-                <input
-                  type="number"
-                  name="precio"
-                  min="0"
-                  step="0.01"
-                  value={form.precio}
-                  onChange={handleChange}
-                  className="pm-input"
-                  placeholder="0.00"
-                />
-              </div>
             </div>
           </div>
         </div>

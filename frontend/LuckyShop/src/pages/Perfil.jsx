@@ -8,6 +8,16 @@ import { useAuth } from '../context/AuthContext.jsx'
 
 const BASE_URL = import.meta.env.VITE_API_URL + ''
 
+// 8 dígitos y empieza con 6 / 7 
+const REGEX_TELEFONO_SV = /^[67]\d{7}$/
+
+// Si viene con el código de país (+503) lo quita, y limita a 8 dígitos
+const normalizarTelefono = (valor) => {
+  let digitos = String(valor || '').replace(/\D/g, '')
+  if (digitos.length > 8 && digitos.startsWith('503')) digitos = digitos.slice(3)
+  return digitos.slice(0, 8)
+}
+
 const Perfil = () => {
   const navigate = useNavigate()
   const { checkSession } = useAuth() // se usa para refrescar el nombre en el Navbar tras editar el perfil
@@ -30,9 +40,13 @@ const Perfil = () => {
     formState: { errors },
   } = useForm({ mode: 'onBlur' })
 
-  // Teléfono: solo números, de 8 a 15 dígitos (opcional). Se separa el onChange para filtrar lo escrito.
+  // Teléfono (opcional): si se escribe, debe ser un número válido de El Salvador.
+  // Se separa el onChange para filtrar lo escrito.
   const { onChange: phoneOnChange, ...phoneField } = register('phone', {
-    pattern: { value: /^\d{8,15}$/, message: 'Ingresa un teléfono válido: solo números, de 8 a 15 dígitos.' },
+    pattern: {
+      value: REGEX_TELEFONO_SV,
+      message: 'Ingresa un teléfono válido de El Salvador: 8 dígitos que empiecen con 2, 6 o 7.',
+    },
   })
 
   // ── Cargar datos del cliente ──
@@ -50,7 +64,7 @@ const Perfil = () => {
           gender: data.gender || '',
           birthdate: data.birthdate ? data.birthdate.slice(0, 10) : '',
           email: data.email || '',
-          phone: (data.phone || '').replace(/\D/g, ''), // solo números (limpia formatos viejos como +503 7000-0000)
+          phone: normalizarTelefono(data.phone), // solo números (limpia formatos viejos como +503 7000-0000)
         })
       } catch (err) {
         setError(err.message)
@@ -90,7 +104,10 @@ const Perfil = () => {
     setGuardando(true)
     try {
       const formData = new FormData()
-      Object.entries(datos).forEach(([key, value]) => formData.append(key, value))
+      Object.entries(datos).forEach(([key, value]) => {
+        // El teléfono siempre se envía normalizado: solo 8 dígitos, sin +503 ni guiones
+        formData.append(key, key === 'phone' ? normalizarTelefono(value) : value)
+      })
       if (avatarFile) formData.append('avatar', avatarFile)
 
       const res = await fetch(`${BASE_URL}/perfilCliente`, {
@@ -262,17 +279,21 @@ const Perfil = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                 <input
                   {...phoneField}
-                  // Solo permite números: las letras y símbolos se descartan al escribir
+                  // Solo permite números (máximo 8): las letras y símbolos se descartan al escribir o pegar
                   onChange={(e) => {
-                    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 15)
+                    e.target.value = normalizarTelefono(e.target.value)
                     phoneOnChange(e)
                   }}
                   inputMode="numeric"
-                  maxLength={15}
+                  maxLength={15} // margen para pegar números con +503 o guiones; se recortan a 8 dígitos
                   placeholder="70001234"
                   className={inputClass(errors.phone)}
                 />
-                {errors.phone && <p className="text-xs text-red-500 mt-1 ml-1">{errors.phone.message}</p>}
+                {errors.phone ? (
+                  <p className="text-xs text-red-500 mt-1 ml-1">{errors.phone.message}</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1 ml-1">8 dígitos, sin +503 ni guiones.</p>
+                )}
               </div>
 
             </div>

@@ -6,7 +6,49 @@ import Footer from '../components/Footer.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import CategoryBanner from '../components/CategoryBanner.jsx'
 import { useCategoria } from '../hooks/useCategoria.jsx'
-import joyeriaImg from '../assets/joyeria.png'
+
+/* ── Iconos de línea delgada en negro (mismo estilo que la app móvil) ── */
+const IconoBase = ({ children }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="w-7 h-7 text-black"
+    aria-hidden="true"
+  >
+    {children}
+  </svg>
+)
+
+// Charm: dije colgante con su anillo
+const IconoCharm = () => (
+  <IconoBase>
+    <circle cx="12" cy="4.5" r="1.8" />
+    <path d="M12 6.3V10" />
+    <path d="M12 21c-4.5-3.2-7.5-5.9-7.5-9.1A3.9 3.9 0 0 1 12 10a3.9 3.9 0 0 1 7.5 1.9c0 3.2-3 5.9-7.5 9.1z" />
+  </IconoBase>
+)
+
+// Set: gema
+const IconoSet = () => (
+  <IconoBase>
+    <path d="M6 3h12l4 6-10 12L2 9z" />
+    <path d="M2 9h20" />
+    <path d="M9.5 3 8 9l4 12 4-12-1.5-6" />
+  </IconoBase>
+)
+
+// Bolsas: bolsa de compras
+const IconoBolsa = () => (
+  <IconoBase>
+    <path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8Z" />
+    <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+  </IconoBase>
+)
 
 // Configuración de cada categoría: título, descripción y subcategorías (si tiene).
 // La clave de cada entrada corresponde al valor de la URL (/categoria/:cat)
@@ -20,7 +62,7 @@ const CONFIG_CATEGORIAS = {
     descripcion: 'No es solo una joya, es un recordatorio tangible de que la suerte no ocurre por azar, sino porque llevas contigo la energía necesaria para atraerla; deja que esta pulsera sea el amuleto que sintonice tu destino con tus deseos.',
     apiCategoria: 'Pulseras,Charms',
     subcategorias: [
-      { value: 'Charms', label: 'Charms', img: joyeriaImg },
+      { value: 'Charms', label: 'Charms', icon: <IconoCharm /> },
     ],
   },
   aritos: {
@@ -32,14 +74,14 @@ const CONFIG_CATEGORIAS = {
     titulo: 'Collares',
     descripcion: 'El destino se rinde ante quienes caminan con seguridad; deja que este collar sea el destello que ilumine tu camino y atraiga hacia ti las sincronías perfectas que el universo tiene preparadas para quienes se atreven a brillar.',
     subcategorias: [
-      { value: 'Set', label: 'Set', icon: '💎' },
+      { value: 'Set', label: 'Set', icon: <IconoSet /> },
     ],
   },
   otros: {
     titulo: 'Otros',
     descripcion: 'Accesorios únicos y especiales para completar tu look.',
     subcategorias: [
-      { value: 'Bolsas', label: 'Bolsas', icon: '🛍️' },
+      { value: 'Bolsas', label: 'Bolsas', icon: <IconoBolsa /> },
     ],
   },
 }
