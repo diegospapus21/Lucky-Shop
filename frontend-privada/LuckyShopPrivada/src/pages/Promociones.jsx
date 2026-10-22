@@ -59,6 +59,14 @@ const obtenerImagenProducto = (p) => {
 const normalizar = (t) =>
   String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
+// ¿El producto está agotado? Los productos agotados no pueden llevar promoción.
+// Si en tu base de datos el agotado se guarda con otro campo, cámbialo solo aquí.
+const estaAgotado = (p) =>
+  normalizar(p?.estado) === 'agotado' ||
+  p?.agotado === true ||
+  (p?.stock !== undefined && p?.stock !== null && Number(p.stock) <= 0) ||
+  (p?.cantidad !== undefined && p?.cantidad !== null && Number(p.cantidad) <= 0)
+
 // ───── Validación de fechas de promociones ─────
 // Fecha de hoy (YYYY-MM-DD) en la hora local del navegador
 const hoyISO = () => new Date().toLocaleDateString('en-CA')
@@ -141,12 +149,14 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  // Sugerencias que coinciden con lo escrito
-  const sugerencias = busquedaProducto.trim()
-    ? productos
-        .filter((p) => normalizar(obtenerNombreProducto(p)).includes(normalizar(busquedaProducto)))
-        .slice(0, 8)
+  // Productos que coinciden con lo escrito
+  const coincidencias = busquedaProducto.trim()
+    ? productos.filter((p) => normalizar(obtenerNombreProducto(p)).includes(normalizar(busquedaProducto)))
     : []
+
+  // Solo se sugieren productos con existencias: los agotados no pueden tener promoción
+  const sugerencias = coincidencias.filter((p) => !estaAgotado(p)).slice(0, 8)
+  const soloAgotados = coincidencias.length > 0 && sugerencias.length === 0
 
   const elegirProducto = (producto) => {
     setProductoSel(producto)
@@ -167,6 +177,13 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
     setError('')
     if (!productoSel?._id || !form.descuento || !form.fechaInicio || !form.fechaFin) {
       setError('Completa todos los campos.')
+      return
+    }
+    // No se puede promocionar un producto agotado (al editar solo se revisa si cambió de producto,
+    // para poder seguir ajustando promociones que ya existían)
+    const cambioProducto = !esEditar || productoSel._id !== promocion.idProducto?._id
+    if (cambioProducto && estaAgotado(productoSel)) {
+      setError('No se puede agregar una promoción a un producto agotado.')
       return
     }
     if (!Number.isInteger(Number(form.descuento)) || Number(form.descuento) < 1 || Number(form.descuento) > 99) {
@@ -275,7 +292,11 @@ const PromocionModal = ({ promocion, onClose, onGuardado }) => {
                 {mostrarSugerencias && busquedaProducto.trim() && (
                   <div className="pm-sugerencias">
                     {sugerencias.length === 0 ? (
-                      <div className="pm-sugerencia-vacia">No se encontraron productos</div>
+                      <div className="pm-sugerencia-vacia">
+                        {soloAgotados
+                          ? 'Ese producto está agotado, no se le puede agregar una promoción'
+                          : 'No se encontraron productos'}
+                      </div>
                     ) : (
                       sugerencias.map((producto) => {
                         const imagen = obtenerImagenProducto(producto)
