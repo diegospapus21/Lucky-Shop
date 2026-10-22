@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/icons8-trébol-50.png",
+      "image": "./assets/logoLucky_remove.png",
       "resizeMode": "contain",
       "backgroundColor": "#FAD4DC"
     },
@@ -20,8 +20,8 @@
     "android": {
       "package": "com.luckyshop.movil",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons8-trébol-50.png",
-        "backgroundColor": "#FAD4DC"
+        "foregroundImage": "./assets/LogoLucky.jpg",
+        "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true
     },

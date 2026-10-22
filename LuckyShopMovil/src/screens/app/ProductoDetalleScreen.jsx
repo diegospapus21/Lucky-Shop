@@ -4,7 +4,8 @@
  * navegación (route.params.producto). Muestra imagen, nombre, estado,
  * descripción, detalles, precio, selector de cantidad y el botón "Añadir al
  * carrito" con el corazón de favoritos al lado. Al final, una sección de
- * productos relacionados de la misma categoría ("También te puede interesar").
+ * productos relacionados ("También te puede interesar").
+ * El carrito vive solo en el menú de abajo (ya no hay carrito arriba).
  */
 import React, { useState } from "react";
 import {
@@ -28,7 +29,7 @@ import { colors } from "../../theme/colors";
 
 const ProductoDetalleScreen = ({ route, navigation }) => {
   const { producto } = route.params;
-  const { agregar, totalItems } = useCart();
+  const { agregar } = useCart();
   const { esFavorito, toggleFavorito } = useFavoritos();
   const { notificacion, mostrar, ocultar } = useNotificacion();
 
@@ -42,7 +43,16 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
 
   // Productos relacionados: misma categoría, excluyendo el actual (máximo 4).
   const { productos: relacionados } = useProductos({ categoria: producto?.idCategoria });
-  const sugerencias = relacionados.filter((p) => p._id !== producto._id).slice(0, 4);
+  // Respaldo: si la categoría no tiene otros productos (ej. bolsas), se muestran
+  // productos de cualquier categoría para que la sección no desaparezca.
+  const { productos: todos } = useProductos({});
+
+  const mismaCategoria = relacionados.filter((p) => p._id !== producto._id);
+  const sugerencias = (
+    mismaCategoria.length > 0
+      ? mismaCategoria
+      : todos.filter((p) => p._id !== producto._id)
+  ).slice(0, 4);
 
   const uri = producto?.imagenPresentacion || producto?.imagenes?.[0] || null;
   const precio = Number(producto?.precio || 0).toFixed(2);
@@ -66,18 +76,10 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
       {/* Mensaje flotante (éxito / error) */}
       <Notificacion {...notificacion} onHide={ocultar} />
 
-      {/* Barra superior: flecha para regresar + carrito con contador */}
+      {/* Barra superior: solo la flecha para regresar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
           <Icon name="arrow-back" size={24} color={colors.textDark} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate("Carrito")} hitSlop={12}>
-          <Icon name="cart-outline" size={24} color={colors.textDark} />
-          {totalItems > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeTexto}>{totalItems}</Text>
-            </View>
-          )}
         </TouchableOpacity>
       </View>
 
@@ -154,7 +156,7 @@ const ProductoDetalleScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* Productos relacionados de la misma categoría */}
+        {/* Productos relacionados */}
         {sugerencias.length > 0 && (
           <>
             <View style={styles.seccionHeader}>
@@ -201,25 +203,10 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 54,
     paddingBottom: 8,
   },
-  // Circulito con el número de productos del carrito
-  badge: {
-    position: "absolute",
-    top: -6,
-    right: -8,
-    backgroundColor: colors.magenta,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  badgeTexto: { color: colors.white, fontSize: 9, fontWeight: "800" },
   contenido: { paddingHorizontal: 20, paddingBottom: 20 },
   imagenWrap: { borderRadius: 20, overflow: "hidden", backgroundColor: colors.surface },
   imagen: { width: "100%", height: 260 },

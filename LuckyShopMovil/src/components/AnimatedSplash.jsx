@@ -1,32 +1,43 @@
+/**
+ * AnimatedSplash.jsx
+ * Splash animado: el trébol aparece al centro girando, el logo (texto) sale
+ * desde detrás de él, se queda un instante y vuelve a esconderse. Al final
+ * se desvanece y llama a `onFinish`.
+ */
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, Animated, Easing, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-// Un solo valor controla el tamaño de todo: porcentaje del ancho de la pantalla que ocupa el trébol.
-// 0.28 = tamaño actual (grande). Bájalo a 0.24 para más pequeño o súbelo a 0.30 como máximo.
+// Porcentaje del ancho de la pantalla que ocupa el trébol.
 const ESCALA = 0.28;
 
-// Medidas derivadas (todo mantiene su proporción)
+// ── Medidas derivadas (todo mantiene su proporción) ──
 const TREBOL_SIZE = width * ESCALA;
-const LOGO_WIDTH = TREBOL_SIZE * 1.95;
 const LOGO_HEIGHT = TREBOL_SIZE * 0.54;
-// Espacio entre el trébol y el texto cuando ya salió.
-// Si la imagen del logo tiene margen transparente y se ve lejos, usa un valor negativo (ej. -8)
-const GAP = 0;
+
+// Proporción real de la imagen del logo (ancho / alto).
+const PROPORCION_LOGO = 820 / 300;
+const LOGO_WIDTH = LOGO_HEIGHT * PROPORCION_LOGO;
+
+// Qué tan cerca queda el texto del trébol (antes 0.10, ahora más pegado).
+// Súbelo (0.35) para acercarlo aún más; bájalo (0.20) si se monta sobre el trébol.
+const ACERCAR = 0.28;
+const GAP = -TREBOL_SIZE * ACERCAR;
 
 // Ancho total del conjunto trébol + espacio + texto
 const TOTAL_WIDTH = TREBOL_SIZE + GAP + LOGO_WIDTH;
 
-// Posición del texto dentro de la ventana de recorte (a la derecha del trébol)
+// Posición del texto dentro de la ventana de recorte
 const TEXTO_LEFT = TREBOL_SIZE / 2 + GAP;
 
-// Cuánto hay que correr el conjunto a la derecha para que el trébol empiece en el centro
+// Desplazamiento para que el trébol empiece justo en el centro de la pantalla
 const DESPLAZAMIENTO_INICIAL = (GAP + LOGO_WIDTH) / 2;
 
 export default function AnimatedSplash({ onFinish }) {
   const spinValue = useRef(new Animated.Value(0)).current;
-  // 0 = texto escondido detrás del trébol (trébol al centro), 1 = texto afuera (trébol a la izquierda)
+  // 0 = texto escondido detrás del trébol (trébol al centro)
+  // 1 = texto afuera (trébol a la izquierda)
   const progreso = useRef(new Animated.Value(0)).current;
   const fadeOut = useRef(new Animated.Value(1)).current;
 
@@ -42,8 +53,8 @@ export default function AnimatedSplash({ onFinish }) {
     );
     giro.start();
 
-    // 2. El texto sale desde detrás del trébol, se queda un instante y vuelve a entrar
-    Animated.sequence([
+    // 2. El texto sale, se queda un instante y vuelve a entrar
+    const secuencia = Animated.sequence([
       Animated.timing(progreso, {
         toValue: 1,
         duration: 850,
@@ -57,7 +68,8 @@ export default function AnimatedSplash({ onFinish }) {
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
+    secuencia.start();
 
     // 3. Ocultar el splash completo para dar paso a la app
     const timer = setTimeout(() => {
@@ -73,23 +85,23 @@ export default function AnimatedSplash({ onFinish }) {
     return () => {
       clearTimeout(timer);
       giro.stop();
+      secuencia.stop();
     };
   }, []);
 
+  // Giro del trébol: de 0 a 360 grados
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  // El conjunto empieza corrido a la derecha (trébol en el centro) y se desliza a su
-  // posición final, lo que hace que el trébol se corra a la izquierda
+  // El conjunto se desliza a su posición final, corriendo el trébol a la izquierda
   const conjuntoX = progreso.interpolate({
     inputRange: [0, 1],
     outputRange: [DESPLAZAMIENTO_INICIAL, 0],
   });
 
-  // El texto viaja de izquierda a derecha dentro de la ventana de recorte:
-  // en 0 está totalmente fuera de la ventana (escondido) y en 1 queda en su lugar
+  // El texto viaja de izquierda a derecha dentro de la ventana de recorte
   const textoX = progreso.interpolate({
     inputRange: [0, 1],
     outputRange: [-(TEXTO_LEFT + LOGO_WIDTH), 0],
@@ -100,8 +112,7 @@ export default function AnimatedSplash({ onFinish }) {
       <Animated.View
         style={[styles.conjunto, { transform: [{ translateX: conjuntoX }] }]}
       >
-        {/* Ventana de recorte: empieza en el centro del trébol, por debajo de él.
-            Solo muestra el texto a medida que sale hacia la derecha */}
+        {/* Ventana de recorte: solo muestra el texto a medida que sale */}
         <View style={styles.ventana}>
           <Animated.Image
             source={require('../../assets/LogoNegro-removebg-preview.png')}
@@ -128,7 +139,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FAD4DC', // Tono rosa exacto
+    backgroundColor: '#FAD4DC',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 99999,
