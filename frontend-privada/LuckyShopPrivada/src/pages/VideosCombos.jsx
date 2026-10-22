@@ -436,17 +436,6 @@ const NuevoComboModal = ({ onClose, onCrear }) => {
           />
         </div>
 
-        <div className="vc-detalle-row">
-          <div className="vc-detalle-label">Dirección de entrega</div>
-          <input
-            name="direccion"
-            value={form.direccion}
-            onChange={handleChange}
-            className="pm-input"
-            placeholder="Ej: Calle Ricaldone"
-          />
-        </div>
-
         {error && <p style={{ color: '#991b1b', fontSize: '0.85rem' }}>{error}</p>}
 
         <div className="vc-detalle-actions">
