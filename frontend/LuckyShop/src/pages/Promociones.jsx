@@ -1,4 +1,5 @@
 // Promociones.jsx — página PÚBLICA: muestra los productos que traen promoción vigente.
+// (La gestión de promociones —crear, editar, eliminar— vive en el panel privado.)
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar.jsx";
@@ -157,14 +158,6 @@ const formatoFecha = (f) =>
       })
     : "";
 
-// Una promoción está vigente si está activa y hoy cae dentro de su rango de fechas
-const estaVigente = (p) => {
-  const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD en hora local
-  const inicio = new Date(p.fechaInicio).toISOString().slice(0, 10);
-  const fin = new Date(p.fechaFin).toISOString().slice(0, 10);
-  return p.estado === "activa" && inicio <= hoy && fin >= hoy;
-};
-
 const esTextoValido = (v) => typeof v === "string" && v.trim() !== "";
 
 // Imagen del producto: imagenPresentacion o la primera de imagenes[]
@@ -229,7 +222,8 @@ export default function Promociones() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${BASE_URL}/promociones`);
+      // Ruta pública: devuelve solo las promociones vigentes (la misma que usa la app móvil)
+      const res = await fetch(`${BASE_URL}/promociones/activas`);
       if (!res.ok) throw new Error("No se pudieron cargar las promociones");
       const data = await res.json();
       setPromociones(Array.isArray(data) ? data : []);
@@ -244,11 +238,12 @@ export default function Promociones() {
     cargarPromociones();
   }, []);
 
-  // Solo promociones vigentes y con producto existente; la de mayor descuento primero
+  // El backend ya devuelve solo las vigentes; aquí se descartan las que perdieron su producto
+  // y se ordena con la de mayor descuento primero
   const vigentes = useMemo(
     () =>
       promociones
-        .filter((p) => p.idProducto && estaVigente(p))
+        .filter((p) => p.idProducto)
         .sort((a, b) => Number(b.descuento) - Number(a.descuento)),
     [promociones]
   );
