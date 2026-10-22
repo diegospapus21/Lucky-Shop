@@ -2,9 +2,9 @@
 // (La gestión de promociones —crear, editar, eliminar— vive en el panel privado.)
 
 import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
-import BotonVolver from '../components/BotonVolver.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
@@ -50,11 +50,18 @@ const Promociones = () => {
     <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
 
-      <div className="max-w-7xl w-full mx-auto px-6 flex-1">
-        {/* Flecha para regresar al inicio + título pequeño, juntos en una línea (sin subrayado) */}
-        <div className="flex items-center gap-3 pt-6">
-          <BotonVolver />
-          <h1 className="text-2xl font-extrabold text-black m-0">Promociones</h1>
+      <div className="max-w-7xl w-full mx-auto px-8 flex-1">
+        {/* Flecha para regresar al inicio + nombre del apartado (igual que Guía de regalo) */}
+        <div className="pt-6">
+          <Link
+            to="/home"
+            className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-500 font-bold text-lg transition-colors"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Promociones
+          </Link>
         </div>
         <p className="mt-2 text-sm text-gray-500">
           Una joya es buena, dos son mejor. Explora nuestros descuentos especiales.
