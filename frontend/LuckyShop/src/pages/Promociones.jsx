@@ -1,644 +1,301 @@
-// PromocionesAdmin.jsx — gestión de promociones (admin)
-import { useState, useEffect, useMemo, useRef } from 'react'
-import Sidebar from '../components/SideBar'
-import Nav from '../components/Nav'
-import NotificacionesModal from '../components/NotificationsModal'
-import '../SideBar.css'
-import '../productosPage.css'
+// Promociones.jsx — página PÚBLICA: muestra los productos que traen promoción vigente.
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
-const POR_PAGINA = 7
-const FILTROS = ['Todas', 'Vigentes', 'No vigentes']
+import { useState, useEffect, useMemo } from "react";
+import Navbar from "../components/Navbar.jsx";
+import Footer from "../components/Footer.jsx";
+import BotonVolver from "../components/BotonVolver.jsx";
 
-// Da formato corto a una fecha (ej: "15 jul. 2026") sin desfase de zona horaria
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
+// ───── Estilos en línea (misma línea visual que la página de Contáctanos) ─────
+const styles = {
+  page: {
+    minHeight: "100vh",
+    backgroundColor: "#fff",
+    display: "flex",
+    flexDirection: "column",
+  },
+  volverWrapper: {
+    padding: "24px 60px 0",
+  },
+  header: {
+    padding: "20px 60px 10px",
+  },
+  headerTitle: {
+    fontSize: "48px",
+    fontWeight: "900",
+    margin: 0,
+    color: "#111",
+    fontFamily: "'Inter', sans-serif",
+    letterSpacing: "-1px",
+    display: "inline-block",
+    borderBottom: "10px solid #111",
+    paddingBottom: "6px",
+  },
+  subtitulo: {
+    fontSize: "18px",
+    color: "#444",
+    marginTop: "16px",
+    maxWidth: "560px",
+    lineHeight: "1.6",
+  },
+  contenido: {
+    flex: 1,
+    padding: "30px 60px 80px",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+    gap: "28px",
+  },
+  card: {
+    position: "relative",
+    backgroundColor: "#fff",
+    borderRadius: "20px",
+    overflow: "hidden",
+    boxShadow: "0 8px 32px rgba(249,100,180,0.15)",
+    display: "flex",
+    flexDirection: "column",
+  },
+  imagenWrap: {
+    width: "100%",
+    aspectRatio: "1 / 1",
+    backgroundColor: "#FDF2F8",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  imagen: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+  sinImagen: {
+    color: "#9CA3AF",
+    fontSize: "14px",
+  },
+  badgeDescuento: {
+    position: "absolute",
+    top: "12px",
+    left: "12px",
+    backgroundColor: "#F472B6",
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: "14px",
+    padding: "6px 12px",
+    borderRadius: "20px",
+  },
+  info: {
+    padding: "16px 18px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  nombre: {
+    fontSize: "17px",
+    fontWeight: "800",
+    color: "#111",
+    margin: 0,
+    fontFamily: "'Inter', sans-serif",
+  },
+  filaPrecios: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  precioFinal: {
+    fontSize: "22px",
+    fontWeight: "900",
+    color: "#111",
+  },
+  precioOriginal: {
+    fontSize: "15px",
+    color: "#9CA3AF",
+    textDecoration: "line-through",
+  },
+  vigencia: {
+    fontSize: "12px",
+    color: "#6B7280",
+    marginTop: "2px",
+  },
+  mensaje: {
+    textAlign: "center",
+    color: "#444",
+    fontSize: "18px",
+    padding: "60px 0",
+  },
+  mensajeError: {
+    textAlign: "center",
+    color: "#991b1b",
+    fontSize: "16px",
+    padding: "40px 0",
+  },
+  btnReintentar: {
+    marginTop: "12px",
+    padding: "10px 28px",
+    borderRadius: "12px",
+    border: "none",
+    backgroundColor: "#F9A8D4",
+    color: "#111",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
+};
+
+// ───── Helpers ─────
+
+// Fecha corta sin desfase de zona horaria (ej. "15 jul 2026")
 const formatoFecha = (f) =>
   f
-    ? new Date(f).toLocaleDateString('es-SV', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'UTC',
+    ? new Date(f).toLocaleDateString("es-SV", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
       })
-    : '—'
+    : "";
 
-// Determina si una promoción está vigente hoy: activa y dentro del rango de fechas
-// (se compara por día para evitar desfases de zona horaria)
+// Una promoción está vigente si está activa y hoy cae dentro de su rango de fechas
 const estaVigente = (p) => {
-  const hoy = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD en hora local
-  const inicio = new Date(p.fechaInicio).toISOString().slice(0, 10)
-  const fin = new Date(p.fechaFin).toISOString().slice(0, 10)
-  return p.estado === 'activa' && inicio <= hoy && fin >= hoy
-}
+  const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD en hora local
+  const inicio = new Date(p.fechaInicio).toISOString().slice(0, 10);
+  const fin = new Date(p.fechaFin).toISOString().slice(0, 10);
+  return p.estado === "activa" && inicio <= hoy && fin >= hoy;
+};
 
-// ── Helpers de producto (nombre, precio e imagen) ──
-const obtenerNombreProducto = (p) =>
-  p?.nombre || p?.name || p?.productName || p?.nombreProducto || 'Producto sin nombre'
+const esTextoValido = (v) => typeof v === "string" && v.trim() !== "";
 
-const obtenerPrecioProducto = (p) =>
-  Number(p?.precio ?? p?.price ?? p?.productPrice ?? 0).toFixed(2)
-
-const esTextoValido = (v) => typeof v === 'string' && v.trim() !== ''
-
-// Imagen del producto según el esquema:
-// 1. imagenPresentacion (imagen principal)
-// 2. imagenes[0] (primera del arreglo)
-const obtenerImagenProducto = (p) => {
-  if (!p) return null
-
-  if (esTextoValido(p.imagenPresentacion)) return p.imagenPresentacion
-
-  if (Array.isArray(p.imagenes)) {
-    const primera = p.imagenes.find(esTextoValido)
-    if (primera) return primera
+// Imagen del producto: imagenPresentacion o la primera de imagenes[]
+const obtenerImagen = (prod) => {
+  if (!prod) return null;
+  if (esTextoValido(prod.imagenPresentacion)) return prod.imagenPresentacion;
+  if (Array.isArray(prod.imagenes)) {
+    const primera = prod.imagenes.find(esTextoValido);
+    if (primera) return primera;
   }
+  return null;
+};
 
-  return null
-}
+const dinero = (n) => `$${Number(n || 0).toFixed(2)}`;
 
-// Quita tildes y pasa a minúsculas para buscar mejor
-const normalizar = (t) =>
-  String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-
-// ───── Validación de fechas de promociones ─────
-// Fecha de hoy (YYYY-MM-DD) en la hora local del navegador
-const hoyISO = () => new Date().toLocaleDateString('en-CA')
-
-const MAX_DIAS_PROMOCION = 365 // una promoción no puede durar más de un año
-
-const diasEntre = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000)
-
-// ¿Es una fecha real con formato YYYY-MM-DD? (rechaza cosas como 2026-02-31)
-const fechaValida = (d) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return false
-  const f = new Date(`${d}T00:00:00Z`)
-  return !Number.isNaN(f.getTime()) && f.toISOString().slice(0, 10) === d
-}
-
-// Devuelve un mensaje de error o null si las fechas son correctas.
-// - No permite poner como inicio o fin una fecha pasada (al crear ni al editar).
-// - "original" son las fechas que ya tenía la promoción al editar: si el admin NO las toca,
-//   se conservan aunque ya hayan pasado, para poder cambiar solo el descuento.
-//   Cualquier fecha que sí se cambie debe ser de hoy en adelante.
-// Funciona también con campos a medias, para mostrar el aviso apenas se elige una fecha.
-const validarFechasPromocion = (inicio, fin, original = null) => {
-  const hoy = hoyISO()
-
-  if (inicio && !fechaValida(inicio)) return 'La fecha de inicio no es válida.'
-  if (fin && !fechaValida(fin)) return 'La fecha fin no es válida.'
-
-  const cambioInicio = !original || original.fechaInicio !== inicio
-  const cambioFin = !original || original.fechaFin !== fin
-
-  if (inicio && cambioInicio && inicio < hoy) return 'La fecha de inicio no puede ser una fecha pasada.'
-  if (fin && cambioFin && fin < hoy) return 'La fecha fin no puede ser una fecha pasada.'
-
-  if (inicio && fin) {
-    if (fin < inicio) return 'La fecha fin no puede ser anterior a la de inicio.'
-    if (diasEntre(inicio, fin) > MAX_DIAS_PROMOCION) return 'La promoción no puede durar más de un año.'
-  }
-
-  return null
-}
-
-// ── Modal para crear / editar promoción ──
-const PromocionModal = ({ promocion, onClose, onGuardado }) => {
-  const esEditar = !!promocion
-  const [productos, setProductos] = useState([])  // Lista de productos activos para elegir cuál promocionar
-  const [productoSel, setProductoSel] = useState(promocion?.idProducto || null)  // Producto elegido
-  const [busquedaProducto, setBusquedaProducto] = useState('')
-  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
-  const buscadorRef = useRef(null)
-
-  // Fechas que ya tenía la promoción (para saber si el admin las cambió al editar)
-  const fechaInicioOriginal = promocion?.fechaInicio ? new Date(promocion.fechaInicio).toISOString().slice(0, 10) : ''
-  const fechaFinOriginal = promocion?.fechaFin ? new Date(promocion.fechaFin).toISOString().slice(0, 10) : ''
-  const fechasOriginales = esEditar ? { fechaInicio: fechaInicioOriginal, fechaFin: fechaFinOriginal } : null
-
-  const [form, setForm] = useState({
-    descuento: promocion?.descuento || '',
-    fechaInicio: fechaInicioOriginal,
-    fechaFin: fechaFinOriginal,
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  // Aviso en vivo: apenas el admin elige una fecha pasada o ilógica se muestra el error y se bloquea el guardado
-  const errorFechasVivo = validarFechasPromocion(form.fechaInicio, form.fechaFin, fechasOriginales)
-  const hoy = hoyISO()
-
-  // Carga los productos activos disponibles para asignarles una promoción
-  useEffect(() => {
-    const fetchProductos = async () => {
-      try {
-        const res = await fetch(`${BASE_URL}/productos?estado=activo`, { credentials: 'include' })
-        const data = await res.json()
-        if (Array.isArray(data)) setProductos(data)
-        else if (Array.isArray(data.productos)) setProductos(data.productos)
-        else if (Array.isArray(data.data)) setProductos(data.data)
-        else setProductos([])
-      } catch {
-        setProductos([])
-      }
-    }
-    fetchProductos()
-  }, [])
-
-  // Cierra las sugerencias al hacer clic fuera del buscador
-  useEffect(() => {
-    const handleClickFuera = (e) => {
-      if (buscadorRef.current && !buscadorRef.current.contains(e.target)) {
-        setMostrarSugerencias(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickFuera)
-    return () => document.removeEventListener('mousedown', handleClickFuera)
-  }, [])
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setError('')
-    setForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  // Sugerencias que coinciden con lo escrito
-  const sugerencias = busquedaProducto.trim()
-    ? productos
-        .filter((p) => normalizar(obtenerNombreProducto(p)).includes(normalizar(busquedaProducto)))
-        .slice(0, 8)
-    : []
-
-  const elegirProducto = (producto) => {
-    setProductoSel(producto)
-    setBusquedaProducto('')
-    setMostrarSugerencias(false)
-  }
-
-  const handleBuscadorKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (sugerencias[0]) elegirProducto(sugerencias[0])
-    }
-    if (e.key === 'Escape') setMostrarSugerencias(false)
-  }
-
-  // Valida el formulario y crea o actualiza la promoción según corresponda
-  const handleSubmit = async () => {
-    setError('')
-    if (!productoSel?._id || !form.descuento || !form.fechaInicio || !form.fechaFin) {
-      setError('Completa todos los campos.')
-      return
-    }
-    if (!Number.isInteger(Number(form.descuento)) || Number(form.descuento) < 1 || Number(form.descuento) > 99) {
-      setError('El descuento debe ser un número entero entre 1 y 99.')
-      return
-    }
-    // Fechas: no pasadas, fin posterior al inicio y duración razonable
-    if (errorFechasVivo) {
-      setError(errorFechasVivo)
-      return
-    }
-
-    setSaving(true)
-    try {
-      const url = esEditar ? `${BASE_URL}/promociones/${promocion._id}` : `${BASE_URL}/promociones`
-      const method = esEditar ? 'PUT' : 'POST'
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          idProducto: productoSel._id,
-          descuento: Number(form.descuento),
-          fechaInicio: form.fechaInicio,
-          fechaFin: form.fechaFin,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'No se pudo guardar la promoción')
-      onGuardado()
-      onClose()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const imagenSel = obtenerImagenProducto(productoSel)
+// ───── Tarjeta de un producto en promoción ─────
+function TarjetaPromo({ promo }) {
+  const prod = promo.idProducto;
+  const imagen = obtenerImagen(prod);
+  const precio = Number(prod?.precio ?? 0);
+  const precioFinal = precio * (1 - Number(promo.descuento) / 100);
 
   return (
-    <div className="pm-overlay" onClick={onClose}>
-      <div className="pm-modal pm-form-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="pm-form-header">
-          <span className="pm-detalles-bar"></span>
-          <h2>{esEditar ? 'Editar promoción' : 'Nueva promoción'}</h2>
+    <div style={styles.card}>
+      <span style={styles.badgeDescuento}>-{promo.descuento}%</span>
+
+      <div style={styles.imagenWrap}>
+        {imagen ? (
+          <img
+            src={imagen}
+            alt={prod?.nombre || "Producto en promoción"}
+            style={styles.imagen}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <span style={styles.sinImagen}>Sin imagen</span>
+        )}
+      </div>
+
+      <div style={styles.info}>
+        <h3 style={styles.nombre}>{prod?.nombre || "Producto"}</h3>
+        <div style={styles.filaPrecios}>
+          <span style={styles.precioFinal}>{dinero(precioFinal)}</span>
+          <span style={styles.precioOriginal}>{dinero(precio)}</span>
         </div>
-
-        <div className="pm-form-fields">
-          {/* PRODUCTO (BUSCADOR) */}
-          <div className="pm-field-group">
-            <label>Producto</label>
-
-            {productoSel ? (
-              <div className="pm-producto-elegido">
-                <div className="pm-sugerencia-img">
-                  {imagenSel ? (
-                    <img
-                      src={imagenSel}
-                      alt={obtenerNombreProducto(productoSel)}
-                      onError={(e) => { e.currentTarget.style.display = 'none' }}
-                    />
-                  ) : (
-                    <span>Sin imagen</span>
-                  )}
-                </div>
-
-                <div className="pm-sugerencia-info">
-                  <strong>{obtenerNombreProducto(productoSel)}</strong>
-                  {productoSel.precio !== undefined && (
-                    <span>${obtenerPrecioProducto(productoSel)}</span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className="pm-producto-quitar"
-                  title="Cambiar producto"
-                  onClick={() => setProductoSel(null)}
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <div className="pm-buscador" ref={buscadorRef}>
-                <input
-                  type="text"
-                  className="pm-input"
-                  placeholder="Escribe el nombre del producto..."
-                  value={busquedaProducto}
-                  onChange={(e) => {
-                    setBusquedaProducto(e.target.value)
-                    setMostrarSugerencias(true)
-                  }}
-                  onFocus={() => setMostrarSugerencias(true)}
-                  onKeyDown={handleBuscadorKeyDown}
-                  autoComplete="off"
-                />
-
-                {mostrarSugerencias && busquedaProducto.trim() && (
-                  <div className="pm-sugerencias">
-                    {sugerencias.length === 0 ? (
-                      <div className="pm-sugerencia-vacia">No se encontraron productos</div>
-                    ) : (
-                      sugerencias.map((producto) => {
-                        const imagen = obtenerImagenProducto(producto)
-
-                        return (
-                          <button
-                            key={producto._id}
-                            type="button"
-                            className="pm-sugerencia"
-                            onClick={() => elegirProducto(producto)}
-                          >
-                            <div className="pm-sugerencia-img">
-                              {imagen ? (
-                                <img
-                                  src={imagen}
-                                  alt={obtenerNombreProducto(producto)}
-                                  onError={(e) => { e.currentTarget.style.display = 'none' }}
-                                />
-                              ) : (
-                                <span>Sin imagen</span>
-                              )}
-                            </div>
-
-                            <div className="pm-sugerencia-info">
-                              <strong>{obtenerNombreProducto(producto)}</strong>
-                              <span>${obtenerPrecioProducto(producto)}</span>
-                            </div>
-                          </button>
-                        )
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="pm-field-group">
-            <label>Descuento (%)</label>
-            <input
-              type="number" name="descuento" min="1" max="99"
-              value={form.descuento} onChange={handleChange}
-              className="pm-input" placeholder="Ej. 20"
-            />
-          </div>
-
-          <div className="pm-field-row">
-            <div className="pm-field-group">
-              <label>Fecha inicio</label>
-              {/* El calendario solo deja elegir de hoy en adelante */}
-              <input
-                type="date"
-                name="fechaInicio"
-                value={form.fechaInicio}
-                min={hoy}
-                onChange={handleChange}
-                className="pm-input"
-              />
-            </div>
-            <div className="pm-field-group">
-              <label>Fecha fin</label>
-              {/* La fecha fin no puede ser anterior a hoy ni a la fecha de inicio */}
-              <input
-                type="date"
-                name="fechaFin"
-                value={form.fechaFin}
-                min={form.fechaInicio && form.fechaInicio > hoy ? form.fechaInicio : hoy}
-                onChange={handleChange}
-                className="pm-input"
-              />
-            </div>
-          </div>
-
-          {(errorFechasVivo || error) && (
-            <p style={{ color: '#991b1b', fontSize: '0.85rem', margin: 0 }}>{errorFechasVivo || error}</p>
-          )}
-        </div>
-
-        <div className="pm-form-actions">
-          <button className="pm-btn pm-btn-cancel" onClick={onClose}>Cancelar</button>
-          <button
-            className="pm-btn pm-btn-dark"
-            onClick={handleSubmit}
-            disabled={saving || !!errorFechasVivo}
-          >
-            {saving ? 'Guardando...' : (esEditar ? 'Guardar cambios' : 'Crear promoción')}
-          </button>
-        </div>
+        <span style={styles.vigencia}>Hasta el {formatoFecha(promo.fechaFin)}</span>
       </div>
     </div>
-  )
+  );
 }
 
-/* Modal de confirmación de eliminación */
-const ConfirmEliminarModal = ({ promocion, onClose, onConfirm }) => (
-  <div className="pm-overlay" onClick={onClose}>
-    <div className="pm-modal pm-confirm-modal" onClick={e => e.stopPropagation()}>
-      <div className="pm-confirm-icon"><span>!</span></div>
-      <h2 className="pm-confirm-title">Confirmación</h2>
-      <p className="pm-confirm-msg">
-        ¿Estás segura que deseas eliminar la promoción de <strong>{promocion.idProducto?.nombre || 'este producto'}</strong>?
-      </p>
-      <div className="pm-confirm-btns">
-        <button className="pm-btn pm-btn-confirm" onClick={onConfirm}>Sí, estoy segura</button>
-        <button className="pm-btn pm-btn-cancel" onClick={onClose}>Cancelar</button>
-      </div>
-    </div>
-  </div>
-)
+// ───── Página ─────
+export default function Promociones() {
+  const [promociones, setPromociones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-
-const PromocionesAdmin = () => {
-  const [promociones, setPromociones] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [notifAbierta, setNotifAbierta] = useState(false)
-  const [paginaActual, setPaginaActual] = useState(1)
-  const [filtro, setFiltro] = useState('Todas') // Todas | Vigentes | No vigentes
-
-  const [modalPromo, setModalPromo] = useState(null)      // null = cerrado, {} = crear, objeto = editar
-  const [modalEliminar, setModalEliminar] = useState(null)
-
-  // Carga todas las promociones registradas
-  const fetchPromociones = async () => {
-    setLoading(true)
-    setError('')
+  // Carga las promociones desde el backend
+  const cargarPromociones = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const res = await fetch(`${BASE_URL}/promociones`, { credentials: 'include' })
-      const data = await res.json()
-      setPromociones(Array.isArray(data) ? data : [])
-    } catch {
-      setError('No se pudieron cargar las promociones')
+      const res = await fetch(`${BASE_URL}/promociones`);
+      if (!res.ok) throw new Error("No se pudieron cargar las promociones");
+      const data = await res.json();
+      setPromociones(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError("No se pudieron cargar las promociones. Inténtalo de nuevo.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchPromociones()
-  }, [])
+    cargarPromociones();
+  }, []);
 
-  // Elimina la promoción seleccionada tras confirmar
-  const handleEliminar = async () => {
-    try {
-      await fetch(`${BASE_URL}/promociones/${modalEliminar._id}`, { method: 'DELETE', credentials: 'include' })
-      setModalEliminar(null)
-      fetchPromociones()
-    } catch {
-      alert('Error al eliminar')
-    }
-  }
-
-  // Cantidad de promociones por pestaña
-  const conteos = useMemo(() => {
-    const vigentes = promociones.filter(estaVigente).length
-    return {
-      Todas: promociones.length,
-      Vigentes: vigentes,
-      'No vigentes': promociones.length - vigentes,
-    }
-  }, [promociones])
-
-  // Promociones según la pestaña elegida
-  const promocionesFiltradas = useMemo(() => {
-    if (filtro === 'Vigentes') return promociones.filter(estaVigente)
-    if (filtro === 'No vigentes') return promociones.filter((p) => !estaVigente(p))
-    return promociones
-  }, [promociones, filtro])
-
-  // Al cambiar de pestaña vuelve a la primera página
-  useEffect(() => {
-    setPaginaActual(1)
-  }, [filtro])
-
-  // Paginación de la tabla de promociones
-  const totalPaginas = Math.max(1, Math.ceil(promocionesFiltradas.length / POR_PAGINA))
-  const inicio = (paginaActual - 1) * POR_PAGINA
-  const promocionesPagina = promocionesFiltradas.slice(inicio, inicio + POR_PAGINA)
-
-  // Si al eliminar queda vacía la página actual, retrocede a la última disponible
-  useEffect(() => {
-    if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
-  }, [totalPaginas, paginaActual])
-
-  // Mensaje cuando no hay resultados en la pestaña elegida
-  const mensajeVacio =
-    promociones.length === 0
-      ? 'No hay promociones registradas'
-      : filtro === 'Vigentes'
-      ? 'No hay promociones vigentes'
-      : 'No hay promociones no vigentes'
+  // Solo promociones vigentes y con producto existente; la de mayor descuento primero
+  const vigentes = useMemo(
+    () =>
+      promociones
+        .filter((p) => p.idProducto && estaVigente(p))
+        .sort((a, b) => Number(b.descuento) - Number(a.descuento)),
+    [promociones]
+  );
 
   return (
-    <div className="pm-page">
-      <Sidebar />
+    <div style={styles.page}>
+      <Navbar />
 
-      <main className="pm-main">
-        <Nav openNotifications={() => setNotifAbierta(true)} />
+      <div style={styles.volverWrapper}>
+        <BotonVolver />
+      </div>
 
-        {/* ENCABEZADO */}
-        <div className="pm-header">
-          <div className="pm-title-wrap">
-            <h1 className="pm-title">Promociones</h1>
-            <div className="pm-title-underline"></div>
-            <p className="pm-subtitle">Gestiona los descuentos y su vigencia.</p>
-          </div>
-          <div className="pm-header-actions">
-            <button className="pm-btn pm-btn-dark pm-btn-nuevo" onClick={() => setModalPromo({})}>
-              <span>＋</span> Agregar promoción
+      <div style={styles.header}>
+        <h1 style={styles.headerTitle}>Promociones</h1>
+        <p style={styles.subtitulo}>
+          Aprovecha los descuentos vigentes en tus accesorios favoritos.
+        </p>
+      </div>
+
+      <div style={styles.contenido}>
+        {loading && <p style={styles.mensaje}>Cargando promociones...</p>}
+
+        {!loading && error && (
+          <div style={styles.mensajeError}>
+            <p>{error}</p>
+            <button style={styles.btnReintentar} onClick={cargarPromociones}>
+              Reintentar
             </button>
           </div>
-        </div>
+        )}
 
-        {/* PESTAÑAS: Todas / Vigentes / No vigentes */}
-        {!loading && !error && (
-          <div className="pm-categorias">
-            {FILTROS.map((f) => (
-              <button
-                key={f}
-                className={`pm-cat-btn ${filtro === f ? 'active' : ''}`}
-                onClick={() => setFiltro(f)}
-              >
-                {f} ({conteos[f]})
-              </button>
+        {!loading && !error && vigentes.length === 0 && (
+          <p style={styles.mensaje}>
+            Por ahora no hay promociones vigentes. ¡Vuelve pronto!
+          </p>
+        )}
+
+        {!loading && !error && vigentes.length > 0 && (
+          <div style={styles.grid}>
+            {vigentes.map((promo) => (
+              <TarjetaPromo key={promo._id} promo={promo} />
             ))}
           </div>
         )}
+      </div>
 
-        {error && (
-          <div className="pm-error">
-            <span>⚠ {error}</span>
-            <button onClick={fetchPromociones}>Reintentar</button>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="pm-loading">
-            <div className="pm-spinner"></div>
-            <span>Cargando promociones...</span>
-          </div>
-        ) : !error && (
-          <>
-            {/* Tabla de promociones registradas */}
-            <div className="vt-table-wrap">
-              <table className="vt-table">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Descuento</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {promocionesFiltradas.length === 0 ? (
-                    <tr><td colSpan={6} className="empty-cell">{mensajeVacio}</td></tr>
-                  ) : (
-                    promocionesPagina.map((p) => {
-                      const vigente = estaVigente(p)
-
-                      return (
-                        <tr key={p._id}>
-                          <td>{p.idProducto?.nombre || 'Producto eliminado'}</td>
-                          <td>-{p.descuento}%</td>
-                          <td>{formatoFecha(p.fechaInicio)}</td>
-                          <td>{formatoFecha(p.fechaFin)}</td>
-                          <td>
-                            <span className={`vt-badge ${vigente ? 'completado' : 'cancelado'}`}>
-                              {vigente ? 'Vigente' : 'No vigente'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="vt-acciones">
-                              <button className="vt-icon-btn editar" title="Editar" onClick={() => setModalPromo(p)}>
-                                ✏
-                              </button>
-                              <button className="vt-icon-btn eliminar" title="Eliminar" onClick={() => setModalEliminar(p)}>
-                                🗑
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* CONTADOR DE RESULTADOS */}
-            {promocionesFiltradas.length > 0 && (
-              <p className="pm-contador">
-                Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, promocionesFiltradas.length)} de {promocionesFiltradas.length} promociones
-              </p>
-            )}
-
-            {/* PAGINACIÓN */}
-            {totalPaginas > 1 && (
-              <div className="pm-pagination">
-                <button
-                  className="pm-page-btn"
-                  disabled={paginaActual === 1}
-                  onClick={() => setPaginaActual(p => p - 1)}
-                >
-                  ‹
-                </button>
-                {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
-                  <button
-                    key={n}
-                    className={`pm-page-btn ${paginaActual === n ? 'active' : ''}`}
-                    onClick={() => setPaginaActual(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
-                <button
-                  className="pm-page-btn"
-                  disabled={paginaActual === totalPaginas}
-                  onClick={() => setPaginaActual(p => p + 1)}
-                >
-                  ›
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
-      {/* modalPromo !== null: {} para crear, objeto de promoción para editar */}
-      {modalPromo !== null && (
-        <PromocionModal
-          promocion={modalPromo._id ? modalPromo : null}
-          onClose={() => setModalPromo(null)}
-          onGuardado={fetchPromociones}
-        />
-      )}
-
-      {modalEliminar && (
-        <ConfirmEliminarModal
-          promocion={modalEliminar}
-          onClose={() => setModalEliminar(null)}
-          onConfirm={handleEliminar}
-        />
-      )}
-
-      <NotificacionesModal abierto={notifAbierta} onCerrar={() => setNotifAbierta(false)} />
+      <Footer />
     </div>
-  )
+  );
 }
-
-export default PromocionesAdmin;
