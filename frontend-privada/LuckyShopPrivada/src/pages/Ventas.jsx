@@ -31,29 +31,6 @@ const IconoLapiz = () => (
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 )
-const IconoBasura = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6l-1 14H6L5 6" />
-    <path d="M10 11v6M14 11v6" />
-    <path d="M9 6V4h6v2" />
-  </svg>
-)
-
-/* ── Modal de confirmación de eliminación ── */
-const ConfirmEliminarModal = ({ venta, onClose, onConfirm }) => (
-  <div className="pm-overlay" onClick={onClose}>
-    <div className="pm-modal pm-confirm-modal" onClick={e => e.stopPropagation()}>
-      <div className="pm-confirm-icon"><span>!</span></div>
-      <h2 className="pm-confirm-title">Confirmación</h2>
-      <p className="pm-confirm-msg">¿Estás segura que deseas eliminar la venta de <strong>{venta.cliente}</strong>?</p>
-      <div className="pm-confirm-btns">
-        <button className="pm-btn pm-btn-confirm" onClick={onConfirm}>Sí, estoy segura</button>
-        <button className="pm-btn pm-btn-cancel" onClick={onClose}>Cancelar</button>
-      </div>
-    </div>
-  </div>
-)
 
 /* ── Modal de detalle de venta ── */
 const DetalleVentaModal = ({ venta, onClose }) => {
@@ -205,6 +182,7 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
 
 /* ────────────────────────────────────────────────────────── */
 const Ventas = () => {
+  // Las ventas no se pueden eliminar (es un registro de transacciones), solo ver y editar
   const {
     ventas,
     loading,
@@ -217,13 +195,11 @@ const Ventas = () => {
     setPaginaActual,
     fetchVentas,
     actualizarVenta,
-    eliminarVenta,
   } = useVentas()
 
   const [notifAbierta, setNotifAbierta] = useState(false)
   const [modalDetalle, setModalDetalle] = useState(null)
   const [modalEditar, setModalEditar] = useState(null)
-  const [modalEliminar, setModalEliminar] = useState(null)
 
   // Método de pago más usado entre todas las ventas del filtro actual (ignorando estados)
   const metodoMasUsadoFiltrado = useMemo(() => {
@@ -252,7 +228,7 @@ const Ventas = () => {
   const inicio = (paginaActual - 1) * POR_PAGINA
   const ventasPagina = ventas.slice(inicio, inicio + POR_PAGINA)
 
-  // Si al eliminar queda vacía la página actual, retrocede a la última disponible
+  // Si al filtrar queda vacía la página actual, retrocede a la última disponible
   useEffect(() => {
     if (paginaActual > totalPaginas) setPaginaActual(totalPaginas)
   }, [totalPaginas, paginaActual, setPaginaActual])
@@ -261,15 +237,6 @@ const Ventas = () => {
     try {
       await actualizarVenta(id, datos)
       setModalEditar(null)
-    } catch (err) {
-      alert('Error: ' + err.message)
-    }
-  }
-
-  const handleEliminar = async () => {
-    try {
-      await eliminarVenta(modalEliminar._id)
-      setModalEliminar(null)
     } catch (err) {
       alert('Error: ' + err.message)
     }
@@ -377,15 +344,13 @@ const Ventas = () => {
                     <td className="vt-monto">{formatoMoneda(venta.monto)}</td>
                     <td><span className={`vt-badge ${badgeClase(venta.estado)}`}>{venta.estado}</span></td>
                     <td>
+                      {/* Solo ver detalle y editar: no hay botón para eliminar ventas */}
                       <div className="vt-acciones">
                         <button className="vt-icon-btn" title="Ver detalle" onClick={() => setModalDetalle(venta)}>
                           <IconoOjo />
                         </button>
                         <button className="vt-icon-btn editar" title="Editar" onClick={() => setModalEditar(venta)}>
                           <IconoLapiz />
-                        </button>
-                        <button className="vt-icon-btn eliminar" title="Eliminar" onClick={() => setModalEliminar(venta)}>
-                          <IconoBasura />
                         </button>
                       </div>
                     </td>
@@ -442,14 +407,6 @@ const Ventas = () => {
           venta={modalEditar}
           onClose={() => setModalEditar(null)}
           onGuardar={handleGuardarEdicion}
-        />
-      )}
-
-      {modalEliminar && (
-        <ConfirmEliminarModal
-          venta={modalEliminar}
-          onClose={() => setModalEliminar(null)}
-          onConfirm={handleEliminar}
         />
       )}
 
