@@ -88,7 +88,26 @@ export function useVentas() {
       credentials: "include",
       body: JSON.stringify(datos),
     });
-    if (!res.ok) throw new Error("Error al actualizar la venta");
+    if (!res.ok) {
+      // El backend explica el motivo (por ejemplo, un pedido enviado no se puede cancelar)
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.message || "Error al actualizar la venta");
+    }
+    await fetchVentas();
+  }, [fetchVentas]);
+
+  // El admin acepta o rechaza un pedido ("aceptado" | "rechazado"). Solo se puede decidir una vez.
+  const decidirPedido = useCallback(async (id, decision) => {
+    const res = await fetch(`${BASE_URL}/venta/${id}/decision`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ decision }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.message || "No se pudo registrar la decisión");
+    }
     await fetchVentas();
   }, [fetchVentas]);
 
@@ -118,6 +137,7 @@ export function useVentas() {
     valorMaximoGrafica,
     fetchVentas,
     actualizarVenta,
+    decidirPedido,
     eliminarVenta,
   };
 }

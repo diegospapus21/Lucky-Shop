@@ -22,14 +22,15 @@ import CustomButton from "../../components/CustomButton";
 import Icon from "../../components/Icon";
 import { useCart } from "../../context/CartContext";
 import { colors } from "../../theme/colors";
+import { COSTO_ENVIO, MENSAJE_ENTREGA } from "../../utils/envio";
 
 const CarritoScreen = ({ navigation }) => {
   const { items, cambiarCantidad, eliminar, subtotal } = useCart();
   const [promo, setPromo] = useState("");
 
-  // Envío gratis en este avance; el total es igual al subtotal.
-  const envioGratis = true;
-  const total = subtotal;
+  // Mismo costo de envío que la web ($4.00); solo se cobra si hay productos
+  const envio = items.length > 0 ? COSTO_ENVIO : 0;
+  const total = subtotal + envio;
 
   // Estado vacío.
   if (items.length === 0) {
@@ -113,13 +114,19 @@ const CarritoScreen = ({ navigation }) => {
           </View>
           <View style={styles.resumenFila}>
             <Text style={styles.resumenLabel}>Envío</Text>
-            <Text style={styles.resumenValor}>{envioGratis ? "Gratis" : "$0.00"}</Text>
+            <Text style={styles.resumenValor}>${envio.toFixed(2)}</Text>
           </View>
           <View style={styles.divisor} />
           <View style={styles.resumenFila}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValor}>${total.toFixed(2)}</Text>
           </View>
+        </View>
+
+        {/* Tiempo estipulado de entrega */}
+        <View style={styles.entrega}>
+          <Icon name="time-outline" size={18} color={colors.magenta} />
+          <Text style={styles.entregaTexto}>{MENSAJE_ENTREGA}</Text>
         </View>
 
         <CustomButton
@@ -190,6 +197,16 @@ const styles = StyleSheet.create({
   promoBtn: { backgroundColor: colors.coral, borderRadius: 14, paddingHorizontal: 22, paddingVertical: 12 },
   promoBtnTexto: { color: colors.white, fontWeight: "700", fontSize: 14 },
   resumen: { backgroundColor: colors.pinkTint, borderRadius: 18, padding: 18, marginBottom: 18 },
+  entrega: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  entregaTexto: { flex: 1, marginLeft: 8, fontSize: 13, color: colors.textGray, fontWeight: "600" },
   resumenFila: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   resumenLabel: { fontSize: 14, color: colors.textGray },
   resumenValor: { fontSize: 14, fontWeight: "700", color: colors.textDark },

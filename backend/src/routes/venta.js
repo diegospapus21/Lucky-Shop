@@ -21,6 +21,10 @@ router.route("/mias")
 router.route("/search_name")
 .post(validateAuthToken("Admin"), ventaController.searchByName);
 
+// PUT /api/venta/:id/decision  El admin acepta o rechaza el pedido (body: { decision: "aceptado" | "rechazado" })
+router.route("/:id/decision")
+.put(validateAuthToken("Admin"), ventaController.decidirPedido);
+
 // Rutas específicas por ID para el endpoint /api/venta/:id (solo admin)
 // GET    /api/venta/:id     Obtener todos los detalles de una venta específica
 // PUT    /api/venta/:id     Actualizar estado u otros detalles de la venta

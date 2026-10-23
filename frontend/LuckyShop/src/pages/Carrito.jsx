@@ -6,6 +6,7 @@ import Footer from '../components/Footer.jsx'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import Eliminar from '../assets/icons8-basura-50.png'
+import { MENSAJE_ENTREGA } from '../utils/envio.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL + ''
 
@@ -174,6 +175,15 @@ const Carrito = () => {
                     <span>${totalFinal.toFixed(2)}</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">El impuesto y costo de envío se calcula en el pago</p>
+                </div>
+
+                {/* Tiempo estipulado de entrega */}
+                <div className="flex items-start gap-2 rounded-xl bg-pink-50 px-3 py-2.5 mb-4 text-xs text-gray-600">
+                  <svg className="w-4 h-4 text-pink-500 shrink-0 mt-px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  <span>{MENSAJE_ENTREGA}</span>
                 </div>
 
                 {error && <p className="text-xs text-red-500 mb-3">{error}</p>}

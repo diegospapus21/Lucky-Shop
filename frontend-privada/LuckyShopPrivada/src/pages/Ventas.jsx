@@ -12,6 +12,20 @@ const ESTADOS_FILTRO = ['Todos', 'Completado', 'Pendiente', 'Cancelado']
 // Cantidad de ventas que se muestran por página
 const POR_PAGINA = 4
 
+// Textos y clases de la decisión del admin sobre el pedido
+const ETIQUETA_PEDIDO = { pendiente: 'Por revisar', aceptado: 'Aceptado', rechazado: 'Rechazado' }
+
+// Devuelve el motivo por el que un botón (aceptar / rechazar) está bloqueado, o null si se puede usar.
+// Reglas: se decide una sola vez, y un pedido ya enviado no se puede rechazar.
+const motivoBloqueo = (venta, decision) => {
+  const estadoPedido = venta.estadoPedido || 'pendiente'
+  if (estadoPedido === 'aceptado') return 'Este pedido ya fue aceptado'
+  if (estadoPedido === 'rechazado') return 'Este pedido ya fue rechazado'
+  if (venta.estado === 'Cancelado') return 'El pedido está cancelado'
+  if (decision === 'rechazado' && venta.enviado) return 'El pedido ya fue enviado: no se puede rechazar'
+  return null
+}
+
 // Genera las iniciales (máx 2 letras) a partir de un nombre, para el avatar circular
 const iniciales = (nombre = '') =>
   nombre.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?'
@@ -29,6 +43,17 @@ const IconoLapiz = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+)
+
+const IconoCheck = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+)
+const IconoX = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 )
 
@@ -52,6 +77,16 @@ const DetalleVentaModal = ({ venta, onClose }) => {
             <div>
               <span className="pm-info-label">Estado</span>
               <p className="pm-info-val">{venta.estado}</p>
+            </div>
+          </div>
+          <div className="pm-info-row pm-info-2col">
+            <div>
+              <span className="pm-info-label">Pedido</span>
+              <p className="pm-info-val">{ETIQUETA_PEDIDO[venta.estadoPedido || 'pendiente']}</p>
+            </div>
+            <div>
+              <span className="pm-info-label">Envío</span>
+              <p className="pm-info-val">{venta.enviado ? 'Enviado' : 'No enviado'}</p>
             </div>
           </div>
           <div className="pm-info-row pm-info-2col">
@@ -116,7 +151,13 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
     metodoPago: venta.metodoPago || '',
     referencia: venta.referencia || '',
     fecha: venta.fecha ? new Date(venta.fecha).toISOString().slice(0, 10) : '',
+    enviado: !!venta.enviado,
   })
+
+  // Un pedido rechazado queda bloqueado: no se puede reactivar ni marcar como enviado
+  const rechazado = (venta.estadoPedido || 'pendiente') === 'rechazado'
+  // Un pedido enviado ya no se puede cancelar
+  const cancelado = form.estado === 'Cancelado'
 
   const handleChange = e => {
     const { name, value } = e.target
@@ -134,6 +175,7 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
       metodoPago: form.metodoPago,
       referencia: form.referencia,
       fecha: form.fecha,
+      enviado: form.enviado,
       ...estadoBooleanos,
     })
   }
@@ -149,9 +191,9 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
           <div className="pm-field-row">
             <div className="pm-field-group">
               <label>Estado</label>
-              <select name="estado" value={form.estado} onChange={handleChange} className="pm-input">
+              <select name="estado" value={form.estado} onChange={handleChange} className="pm-input" disabled={rechazado}>
                 {ESTADOS_FILTRO.filter(e => e !== 'Todos').map(e => (
-                  <option key={e} value={e}>{e}</option>
+                  <option key={e} value={e} disabled={e === 'Cancelado' && form.enviado}>{e}</option>
                 ))}
               </select>
             </div>
@@ -170,10 +212,70 @@ const EditarVentaModal = ({ venta, onClose, onGuardar }) => {
               <input type="date" name="fecha" value={form.fecha} onChange={handleChange} className="pm-input" />
             </div>
           </div>
+          <div className="pm-field-row">
+            <label className="vt-check-envio">
+              <input
+                type="checkbox"
+                checked={form.enviado}
+                disabled={rechazado || cancelado}
+                onChange={e => setForm(prev => ({ ...prev, enviado: e.target.checked }))}
+              />
+              Pedido enviado
+            </label>
+          </div>
+          {rechazado && <p className="vt-nota-bloqueo">Este pedido fue rechazado: su estado ya no se puede cambiar.</p>}
+          {!rechazado && form.enviado && <p className="vt-nota-bloqueo">Un pedido enviado ya no se puede cancelar ni rechazar.</p>}
         </div>
         <div className="pm-form-actions">
           <button className="pm-btn pm-btn-cancel" onClick={onClose}>Cancelar</button>
           <button className="pm-btn pm-btn-dark" onClick={handleSubmit}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Modal para aceptar o rechazar un pedido ── */
+const DecisionPedidoModal = ({ venta, decision, onClose, onConfirmar }) => {
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+  const aceptar = decision === 'aceptado'
+
+  const confirmar = async () => {
+    setGuardando(true)
+    setError('')
+    try {
+      await onConfirmar(venta._id, decision)
+    } catch (err) {
+      setError(err.message)
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="pm-overlay" onClick={guardando ? undefined : onClose}>
+      <div className="pm-modal pm-confirm-modal" onClick={e => e.stopPropagation()}>
+        <div className={`pm-confirm-icon vt-decision-icon ${aceptar ? 'aceptar' : 'rechazar'}`}>
+          <span>{aceptar ? '✓' : '✕'}</span>
+        </div>
+        <h3 className="pm-confirm-title">{aceptar ? '¿Aceptar este pedido?' : '¿Rechazar este pedido?'}</h3>
+        <p className="pm-confirm-msg">
+          Pedido de <strong>{venta.cliente}</strong> por <strong>{formatoMoneda(venta.monto)}</strong>.
+          <br />
+          {aceptar
+            ? 'Una vez aceptado ya no podrás rechazarlo.'
+            : 'Una vez rechazado ya no podrás aceptarlo y la venta quedará cancelada.'}
+        </p>
+        {error && <p className="vt-decision-error">{error}</p>}
+        <div className="pm-confirm-btns">
+          <button className="pm-btn pm-btn-cancel" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button
+            className={`pm-btn ${aceptar ? 'pm-btn-confirm' : 'vt-btn-rechazar'}`}
+            onClick={confirmar}
+            disabled={guardando}
+          >
+            {guardando ? 'Guardando...' : aceptar ? 'Sí, aceptar' : 'Sí, rechazar'}
+          </button>
         </div>
       </div>
     </div>
@@ -195,11 +297,13 @@ const Ventas = () => {
     setPaginaActual,
     fetchVentas,
     actualizarVenta,
+    decidirPedido,
   } = useVentas()
 
   const [notifAbierta, setNotifAbierta] = useState(false)
   const [modalDetalle, setModalDetalle] = useState(null)
   const [modalEditar, setModalEditar] = useState(null)
+  const [modalDecision, setModalDecision] = useState(null) // { venta, decision } | null
 
   // Método de pago más usado entre todas las ventas del filtro actual (ignorando estados)
   const metodoMasUsadoFiltrado = useMemo(() => {
@@ -240,6 +344,12 @@ const Ventas = () => {
     } catch (err) {
       alert('Error: ' + err.message)
     }
+  }
+
+  // Confirma la decisión (aceptar / rechazar). Si falla, el modal muestra el motivo.
+  const handleDecidir = async (id, decision) => {
+    await decidirPedido(id, decision)
+    setModalDecision(null)
   }
 
   const badgeClase = (estado) => ({
@@ -322,15 +432,16 @@ const Ventas = () => {
                   <th>Fecha</th>
                   <th>Monto</th>
                   <th>Estado</th>
+                  <th>Pedido</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={5} className="loading-cell">Cargando ventas...</td></tr>
+                  <tr><td colSpan={6} className="loading-cell">Cargando ventas...</td></tr>
                 )}
                 {!loading && ventasPagina.length === 0 && (
-                  <tr><td colSpan={5} className="empty-cell">No se encontraron ventas</td></tr>
+                  <tr><td colSpan={6} className="empty-cell">No se encontraron ventas</td></tr>
                 )}
                 {!loading && ventasPagina.map(venta => (
                   <tr key={venta._id}>
@@ -344,8 +455,30 @@ const Ventas = () => {
                     <td className="vt-monto">{formatoMoneda(venta.monto)}</td>
                     <td><span className={`vt-badge ${badgeClase(venta.estado)}`}>{venta.estado}</span></td>
                     <td>
-                      {/* Solo ver detalle y editar: no hay botón para eliminar ventas */}
+                      <span className={`vt-badge vt-pedido-${venta.estadoPedido || 'pendiente'}`}>
+                        {ETIQUETA_PEDIDO[venta.estadoPedido || 'pendiente']}
+                      </span>
+                      {venta.enviado && <span className="vt-badge vt-pedido-enviado">Enviado</span>}
+                    </td>
+                    <td>
+                      {/* Ver detalle, editar y aceptar/rechazar el pedido (no hay botón para eliminar ventas) */}
                       <div className="vt-acciones">
+                        <button
+                          className="vt-icon-btn aceptar"
+                          title={motivoBloqueo(venta, 'aceptado') || 'Aceptar pedido'}
+                          disabled={!!motivoBloqueo(venta, 'aceptado')}
+                          onClick={() => setModalDecision({ venta, decision: 'aceptado' })}
+                        >
+                          <IconoCheck />
+                        </button>
+                        <button
+                          className="vt-icon-btn rechazar"
+                          title={motivoBloqueo(venta, 'rechazado') || 'Rechazar pedido'}
+                          disabled={!!motivoBloqueo(venta, 'rechazado')}
+                          onClick={() => setModalDecision({ venta, decision: 'rechazado' })}
+                        >
+                          <IconoX />
+                        </button>
                         <button className="vt-icon-btn" title="Ver detalle" onClick={() => setModalDetalle(venta)}>
                           <IconoOjo />
                         </button>
@@ -400,6 +533,15 @@ const Ventas = () => {
 
       {modalDetalle && (
         <DetalleVentaModal venta={modalDetalle} onClose={() => setModalDetalle(null)} />
+      )}
+
+      {modalDecision && (
+        <DecisionPedidoModal
+          venta={modalDecision.venta}
+          decision={modalDecision.decision}
+          onClose={() => setModalDecision(null)}
+          onConfirmar={handleDecidir}
+        />
       )}
 
       {modalEditar && (

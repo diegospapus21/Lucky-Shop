@@ -330,3 +330,76 @@
     max-width: none;
   }
 }
+
+/* ── Aceptar / rechazar pedidos ── */
+.vt-pedido-pendiente { background: #f3f4f6; color: #4b5563; }
+.vt-pedido-aceptado  { background: #d1fae5; color: #065f46; }
+.vt-pedido-rechazado { background: #fee2e2; color: #991b1b; }
+.vt-pedido-enviado   { background: #dbeafe; color: #1e40af; margin-left: 6px; }
+
+.vt-icon-btn.aceptar:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.vt-icon-btn.rechazar:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+/* Botones bloqueados (pedido ya decidido, cancelado o enviado) */
+.vt-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.vt-icon-btn:disabled:hover {
+  background: none;
+  color: #5a7464;
+}
+
+/* Modal de confirmación de la decisión */
+.vt-decision-icon.aceptar { border-color: #22c55e; }
+.vt-decision-icon.aceptar span { color: #22c55e; }
+.vt-decision-icon.rechazar { border-color: #dc2626; }
+.vt-decision-icon.rechazar span { color: #dc2626; }
+
+.vt-btn-rechazar {
+  background: #dc2626;
+  color: #fff;
+}
+
+.vt-btn-rechazar:hover {
+  background: #b91c1c;
+}
+
+.pm-confirm-btns .pm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vt-decision-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  margin: -14px 0 18px;
+}
+
+/* Editar venta: casilla "Pedido enviado" y notas de bloqueo */
+.vt-check-envio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #1a2b1e;
+  cursor: pointer;
+}
+
+.vt-check-envio input:disabled {
+  cursor: not-allowed;
+}
+
+.vt-nota-bloqueo {
+  font-size: 0.8rem;
+  color: #92400e;
+  margin: 6px 0 0;
+}

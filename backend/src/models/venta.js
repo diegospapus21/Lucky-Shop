@@ -39,6 +39,21 @@ const ventasSchema = new Schema(
     },
     status: { //Estado general de la venta (activa, cancelada)
         type: Boolean 
+    },
+    estadoPedido: { //Decisión del administrador sobre el pedido (una vez tomada ya no se puede cambiar)
+        type: String,
+        enum: ["pendiente", "aceptado", "rechazado"],
+        default: "pendiente"
+    },
+    fechaDecision: { //Fecha en que se aceptó o rechazó el pedido
+        type: Date
+    },
+    enviado: { //Si el pedido ya fue enviado al cliente (un pedido enviado no se puede rechazar)
+        type: Boolean,
+        default: false
+    },
+    fechaEnvio: { //Fecha en que se marcó como enviado
+        type: Date
     }
   },
   {

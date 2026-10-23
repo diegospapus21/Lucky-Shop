@@ -1,4 +1,5 @@
 //Controlador para gestionar las ventas y pagos
+import mongoose from "mongoose";
 import ventaModel from "../models/venta.js";
 import carritoModel from "../models/carrito.js";
 import gananciasModel from "../models/ganancias.js";
@@ -37,6 +38,8 @@ const enriquecerVenta = (venta) => {
     cliente: cliente || "Cliente",
     monto: Number(carrito?.total ?? 0),
     estado: derivarEstado(obj.status, obj.statusPago),
+    estadoPedido: obj.estadoPedido || "pendiente", // pendiente | aceptado | rechazado
+    enviado: !!obj.enviado,
   };
 };
 
@@ -119,7 +122,7 @@ ventaController.getMisVentas = async (req, res) => {
 
     const ventas = await ventaModel
       .find({ IdCarrito: { $in: carritos.map((c) => c._id) } })
-      .select("IdCarrito direcion referencia metodoPago statusPago phone fecha status createdAt")
+      .select("IdCarrito direcion referencia metodoPago statusPago phone fecha status estadoPedido enviado createdAt")
       .sort({ createdAt: -1 })
       .populate({
         path: "IdCarrito",
@@ -229,10 +232,36 @@ ventaController.deleteVenta = async (req, res) => {
 //PUT - Actualizar una venta por su ID y sincronizar la ganancia
 ventaController.updateVenta = async (req, res) => {
   try {
-    const { IdCarrito, direcion, referencia, metodoPago, statusPago, phone, fecha, status } = req.body;
+    const { IdCarrito, direcion, referencia, metodoPago, statusPago, phone, fecha, status, enviado } = req.body;
+
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Venta no encontrada" });
+    }
+    const actual = await ventaModel.findById(req.params.id);
+    if (!actual) {
+      return res.status(404).json({ message: "Venta no encontrada" });
+    }
+
+    // Un pedido rechazado queda bloqueado: no se reactiva ni se marca como enviado
+    if (actual.estadoPedido === "rechazado" && (status === true || statusPago === true || enviado === true)) {
+      return res.status(409).json({ message: "El pedido fue rechazado y ya no se puede reactivar ni enviar." });
+    }
+
+    // Un pedido enviado no se puede cancelar/rechazar (tampoco por esta vía)
+    const quedaEnviado = enviado === undefined ? !!actual.enviado : !!enviado;
+    if (quedaEnviado && status === false) {
+      return res.status(409).json({ message: "El pedido ya fue enviado y no se puede cancelar ni rechazar." });
+    }
+
+    const cambios = { IdCarrito, direcion, referencia, metodoPago, statusPago, phone, fecha, status };
+    if (enviado !== undefined) {
+      cambios.enviado = !!enviado;
+      cambios.fechaEnvio = enviado ? (actual.fechaEnvio || new Date()) : null;
+    }
+
     const ventaActualizada = await ventaModel.findByIdAndUpdate(
       req.params.id,
-      { IdCarrito, direcion, referencia, metodoPago, statusPago, phone, fecha, status },
+      cambios,
       { new: true },
     ).populate(POPULATE_CARRITO);
 
@@ -247,6 +276,59 @@ ventaController.updateVenta = async (req, res) => {
     return res.status(200).json(ventaEnriquecida);
   } catch (error) {
     console.error("updateVenta error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+//PUT - El administrador acepta o rechaza un pedido.
+// Reglas: solo se decide una vez (después los botones quedan bloqueados) y un pedido
+// que ya fue enviado no se puede rechazar. Rechazar cancela la venta y quita su ganancia.
+ventaController.decidirPedido = async (req, res) => {
+  try {
+    const { decision } = req.body;
+
+    if (!["aceptado", "rechazado"].includes(decision)) {
+      return res.status(400).json({ message: "Decisión inválida: debe ser 'aceptado' o 'rechazado'" });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Venta no encontrada" });
+    }
+
+    // Condiciones en la misma consulta que actualiza, así dos clics seguidos no pueden decidir dos veces
+    const filtro = {
+      _id: req.params.id,
+      status: { $ne: false }, // un pedido cancelado ya no se decide
+      $or: [{ estadoPedido: { $exists: false } }, { estadoPedido: "pendiente" }],
+    };
+    if (decision === "rechazado") filtro.enviado = { $ne: true }; // ya enviado: no se puede rechazar
+
+    const cambios = { estadoPedido: decision, fechaDecision: new Date() };
+    if (decision === "rechazado") cambios.status = false; // pasa a "Cancelado"
+
+    const venta = await ventaModel
+      .findOneAndUpdate(filtro, { $set: cambios }, { new: true })
+      .populate(POPULATE_CARRITO);
+
+    if (!venta) {
+      // No se pudo decidir: se explica el motivo
+      const existente = await ventaModel.findById(req.params.id);
+      if (!existente) {
+        return res.status(404).json({ message: "Venta no encontrada" });
+      }
+      const yaDecidido = (existente.estadoPedido && existente.estadoPedido !== "pendiente") || existente.status === false;
+      if (yaDecidido) {
+        return res.status(409).json({ message: "Este pedido ya fue aceptado, rechazado o cancelado y no se puede cambiar." });
+      }
+      return res.status(409).json({ message: "El pedido ya fue enviado y no se puede rechazar." });
+    }
+
+    const ventaEnriquecida = enriquecerVenta(venta);
+    // Al rechazar (Cancelado) se elimina la ganancia asociada para que no sume en Finanzas
+    await sincronizarGanancia(venta._id, ventaEnriquecida.estado, ventaEnriquecida.monto, ventaEnriquecida.fecha);
+
+    return res.status(200).json(ventaEnriquecida);
+  } catch (error) {
+    console.error("decidirPedido error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
