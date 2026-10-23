@@ -83,7 +83,15 @@ videosComboController.actualizarStatus = async (req, res) => {
       return res.status(403).json({ message: "No autorizado" });
     }
 
+    // Si el cliente ya aceptó o negó, ya no puede cambiar de opción
+    if (combo.status !== null && combo.status !== undefined) {
+      return res.status(400).json({ message: "Ya has respondido a este video combo y no puedes cambiar tu opción" });
+    }
+
     combo.status = status;
+    if (status !== true) {
+      combo.enProcesoEnvio = false;
+    }
     await combo.save();
 
     const comboActualizado = await videosComboModel
@@ -100,10 +108,23 @@ videosComboController.actualizarStatus = async (req, res) => {
 // PATCH - Actualizar el status desde el panel admin (sin validar dueño, la admin puede corregir cualquiera)
 videosComboController.actualizarStatusAdmin = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, enProcesoEnvio } = req.body;
+    const updateData = {};
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status !== true) {
+        updateData.enProcesoEnvio = false;
+      }
+    }
+    if (enProcesoEnvio !== undefined) {
+      if (enProcesoEnvio && status !== undefined && status !== true) {
+        return res.status(400).json({ message: "Solo se puede marcar en proceso de envío si el combo está aceptado" });
+      }
+      updateData.enProcesoEnvio = enProcesoEnvio;
+    }
 
     const comboActualizado = await videosComboModel
-      .findByIdAndUpdate(req.params.id, { status }, { new: true })
+      .findByIdAndUpdate(req.params.id, updateData, { new: true })
       .populate(POPULATE_COMBO);
 
     if (!comboActualizado) {
@@ -113,6 +134,37 @@ videosComboController.actualizarStatusAdmin = async (req, res) => {
     return res.status(200).json(comboActualizado);
   } catch (error) {
     console.error("actualizarStatusAdmin error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// PATCH - Marcar proceso de envío (panel admin)
+videosComboController.marcarEnvio = async (req, res) => {
+  try {
+    const { enProcesoEnvio = true } = req.body;
+
+    const combo = await videosComboModel.findById(req.params.id);
+    if (!combo) {
+      return res.status(404).json({ message: "Combo no encontrado" });
+    }
+
+    // Validación: solo se puede enviar cuando el cliente haya aceptado el combo
+    if (enProcesoEnvio && combo.status !== true) {
+      return res.status(400).json({
+        message: "El pedido solo se puede enviar cuando el cliente haya aceptado el combo",
+      });
+    }
+
+    combo.enProcesoEnvio = enProcesoEnvio;
+    await combo.save();
+
+    const comboActualizado = await videosComboModel
+      .findById(combo._id)
+      .populate(POPULATE_COMBO);
+
+    return res.status(200).json(comboActualizado);
+  } catch (error) {
+    console.error("marcarEnvio error:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };

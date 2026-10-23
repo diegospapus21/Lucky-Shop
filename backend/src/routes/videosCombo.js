@@ -24,6 +24,10 @@ router.route("/:id/status")
 router.route("/:id/status-admin")
 .patch(validateAuthToken("Admin"), videosComboController.actualizarStatusAdmin);
 
+// PATCH /videosCombo/:id/envio  -> la admin marca el proceso de envío
+router.route("/:id/envio")
+.patch(validateAuthToken("Admin"), videosComboController.marcarEnvio);
+
 // DELETE /videosCombo/:id  -> elimina un combo (panel admin)
 router.route("/:id")
 .delete(validateAuthToken("Admin"), videosComboController.deleteVideoCombo);

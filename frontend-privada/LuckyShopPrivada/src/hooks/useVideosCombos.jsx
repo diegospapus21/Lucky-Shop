@@ -83,6 +83,20 @@ export function useVideosCombos() {
     setCombos((prev) => prev.filter((c) => c._id !== id))
   }, [])
 
+  // Marca o desmarca el proceso de envío del combo
+  const marcarEnvio = useCallback(async (id, enProcesoEnvio = true) => {
+    const res = await fetch(`${BASE_URL}/${id}/envio`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ enProcesoEnvio }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'No se pudo actualizar el estado de envío')
+    setCombos((prev) => prev.map((c) => (c._id === id ? data : c)))
+    return data
+  }, [])
+
   // Filtra por estado y por texto de búsqueda (nombre del cliente o nombre del video)
   const combosFiltrados = combos.filter((c) => {
     const estadoTexto = c.status === true ? 'Aceptada' : c.status === false ? 'Denegada' : 'Pendiente'
@@ -110,6 +124,7 @@ export function useVideosCombos() {
     fetchCombos,
     crearCombo,
     actualizarStatus,
+    marcarEnvio,
     eliminarCombo,
   }
 }

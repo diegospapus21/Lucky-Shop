@@ -1,9 +1,10 @@
 //Pagina de Contactanos- Donde el cliente podra comunicarse con nosotros ante cualquier situacion o duda
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import BotonVolver from "../components/BotonVolver.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 // Estilos en línea (objeto de estilos) usados en toda la página de Contáctanos
 const styles = {
@@ -106,7 +107,19 @@ const styles = {
     outline: "none",
     boxSizing: "border-box",
   },
-  // Fila para colocar dos inputs lado a lado (teléfono y correo)
+  select: {
+    width: "100%",
+    padding: "10px 14px",
+    borderRadius: "10px",
+    border: "none",
+    backgroundColor: "#fff",
+    fontSize: "14px",
+    color: "#444",
+    outline: "none",
+    boxSizing: "border-box",
+    cursor: "pointer",
+  },
+  // Fila para colocar dos inputs lado a lado (país y teléfono)
   inputRow: {
     display: "flex",
     gap: "14px",
@@ -189,16 +202,35 @@ const styles = {
 // ───── Validaciones del formulario ─────
 const MAX_NOMBRE = 60;
 const MAX_CORREO = 100;
-const TELEFONO_DIGITOS = 8; // teléfonos de El Salvador: 8 dígitos
 const MIN_MENSAJE = 10;
 const MAX_MENSAJE = 500;
+
+// Lista de países disponibles con sus códigos de llamada y banderas
+const PAISES = [
+  { nombre: "El Salvador", codigo: "+503", bandera: "🇸🇻" },
+  { nombre: "Guatemala", codigo: "+502", bandera: "🇬🇹" },
+  { nombre: "Honduras", codigo: "+504", bandera: "🇭🇳" },
+  { nombre: "Nicaragua", codigo: "+505", bandera: "🇳🇮" },
+  { nombre: "Costa Rica", codigo: "+506", bandera: "🇨🇷" },
+  { nombre: "Panamá", codigo: "+507", bandera: "🇵🇦" },
+  { nombre: "México", codigo: "+52", bandera: "🇲🇽" },
+  { nombre: "Estados Unidos", codigo: "+1", bandera: "🇺🇸" },
+  { nombre: "Colombia", codigo: "+57", bandera: "🇨🇴" },
+  { nombre: "Argentina", codigo: "+54", bandera: "🇦🇷" },
+  { nombre: "Chile", codigo: "+56", bandera: "🇨🇱" },
+  { nombre: "Perú", codigo: "+51", bandera: "🇵🇪" },
+  { nombre: "Ecuador", codigo: "+593", bandera: "🇪🇨" },
+  { nombre: "República Dominicana", codigo: "+1", bandera: "🇩🇴" },
+  { nombre: "España", codigo: "+34", bandera: "🇪🇸" },
+  { nombre: "Canadá", codigo: "+1", bandera: "🇨🇦" },
+];
 
 // Nombre: solo letras (con tildes y ñ) y espacios — se eliminan números y símbolos al escribir
 const limpiarNombre = (t) =>
   t.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "").replace(/\s{2,}/g, " ").slice(0, MAX_NOMBRE);
 
-// Teléfono: solo números (se eliminan letras, espacios, guiones y símbolos)
-const limpiarTelefono = (t) => t.replace(/\D/g, "").slice(0, TELEFONO_DIGITOS);
+// Teléfono: permite +, dígitos, espacios y guiones
+const limpiarTelefono = (t) => t.replace(/[^\d+\s-]/g, "").slice(0, 25);
 
 // Correo: sin espacios
 const limpiarCorreo = (t) => t.replace(/\s/g, "").slice(0, MAX_CORREO);
@@ -224,9 +256,16 @@ const validarFormulario = ({ nombre, correo, telefono, descripcion }) => {
   else if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(\s[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$/.test(nom))
     errores.nombre = "El nombre solo puede contener letras.";
 
-  // El teléfono es opcional, pero si lo escribe debe tener 8 números
-  if (telefono && !new RegExp(`^\\d{${TELEFONO_DIGITOS}}$`).test(telefono))
-    errores.telefono = `El teléfono debe tener ${TELEFONO_DIGITOS} números (solo números).`;
+  // El teléfono es opcional, pero si lo escribe debe tener al menos 7 dígitos válidos
+  if (telefono && telefono.trim() !== "") {
+    const soloDigitos = telefono.replace(/\D/g, "");
+    const tieneSoloPrefijo = /^\+\d{1,4}\s*$/.test(telefono.trim());
+    if (tieneSoloPrefijo) {
+      errores.telefono = "Ingresa tu número de teléfono después del código de país.";
+    } else if (soloDigitos.length < 7) {
+      errores.telefono = "El teléfono debe tener un número válido.";
+    }
+  }
 
   if (!correo) errores.correo = "Ingresa tu correo.";
   else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(correo) || correo.includes(".."))
@@ -244,24 +283,137 @@ const validarFormulario = ({ nombre, correo, telefono, descripcion }) => {
 
 // Formulario de contacto: envía los datos a Formspree (servicio externo de envío de correos)
 function ContactForm() {
+  const { cliente } = useAuth();
+  const [paisSeleccionado, setPaisSeleccionado] = useState("El Salvador");
+
   // Datos escritos por el usuario en el formulario
   const [form, setForm] = useState({
     nombre: "",
     correo: "",
-    telefono: "",
+    telefono: "+503 ",
     descripcion: "",
   });
+
+  // Autocompleta la información del cliente si ha iniciado sesión
+  useEffect(() => {
+    if (cliente) {
+      const nombreCompleto = `${cliente.name || ""} ${cliente.lastName || ""}`.trim();
+      let tel = (cliente.phone || "").trim();
+      let paisDetectado = "El Salvador";
+
+      if (tel) {
+        if (tel.startsWith("+")) {
+          const encontrado = PAISES.find((p) => tel.startsWith(p.codigo));
+          if (encontrado) paisDetectado = encontrado.nombre;
+        } else {
+          tel = `+503 ${tel}`;
+        }
+      } else {
+        tel = "+503 ";
+      }
+
+      setPaisSeleccionado(paisDetectado);
+      setForm((prev) => ({
+        ...prev,
+        nombre: nombreCompleto || prev.nombre,
+        correo: cliente.email || prev.correo,
+        telefono: tel || prev.telefono,
+      }));
+    }
+  }, [cliente]);
 
   const [tocados, setTocados] = useState({}); // Campos que el usuario ya tocó (para mostrar sus errores)
   const errores = validarFormulario(form);
   const errorDe = (campo) => (tocados[campo] ? errores[campo] : "");
   const tocar = (campo) => setTocados((prev) => ({ ...prev, [campo]: true }));
 
-  const [enviando, setEnviando] = useState(false) // true mientras se envía el formulario
+  const [enviando, setEnviando] = useState(false); // true mientras se envía el formulario
   const [mensajeEstado, setMensajeEstado] = useState({ texto: "", tipo: "" }); // Aviso de éxito o error
 
-  // Actualiza el campo correspondiente del formulario según lo que el usuario escribe.
-  // Cada campo "limpia" lo que no está permitido (ej. el teléfono solo acepta números).
+  // Obtiene el prefijo del país seleccionado (ej. "+503 ")
+  const getPrefijoActual = () => {
+    const paisObj = PAISES.find((p) => p.nombre === paisSeleccionado);
+    return paisObj ? `${paisObj.codigo} ` : "+503 ";
+  };
+
+  // Maneja el cambio de país en el combo box y actualiza el prefijo del teléfono
+  const handlePaisChange = (e) => {
+    const nuevoPais = e.target.value;
+    setPaisSeleccionado(nuevoPais);
+
+    const paisObj = PAISES.find((p) => p.nombre === nuevoPais);
+    if (paisObj) {
+      const nuevoCodigo = `${paisObj.codigo} `;
+      // Extrae la parte del número actual descartando el prefijo anterior
+      let parteNumero = form.telefono;
+      const matchPrefijo = parteNumero.match(/^\+\d{1,4}\s*/);
+      if (matchPrefijo) {
+        parteNumero = parteNumero.slice(matchPrefijo[0].length);
+      }
+      const nuevoTel = nuevoCodigo + parteNumero.replace(/[^\d\s-]/g, "").slice(0, 16);
+      setForm((prev) => ({ ...prev, telefono: nuevoTel }));
+    }
+  };
+
+  // Evita que el usuario borre el prefijo del país con Backspace o Delete
+  const handleTelefonoKeyDown = (e) => {
+    const prefijo = getPrefijoActual();
+    const input = e.target;
+    const { selectionStart, selectionEnd } = input;
+
+    if (e.key === "Backspace") {
+      if (selectionStart === selectionEnd && selectionStart <= prefijo.length) {
+        e.preventDefault();
+      } else if (selectionStart < prefijo.length) {
+        e.preventDefault();
+        input.setSelectionRange(prefijo.length, selectionEnd);
+      }
+    }
+
+    if (e.key === "Delete") {
+      if (selectionStart < prefijo.length) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  // Impide que el cursor se posicione antes del prefijo al hacer clic o focus
+  const handleTelefonoFocusOrClick = (e) => {
+    const prefijo = getPrefijoActual();
+    if (e.target.selectionStart < prefijo.length) {
+      e.target.setSelectionRange(prefijo.length, prefijo.length);
+    }
+  };
+
+  // Controla la escritura del teléfono asegurando que el prefijo del país siempre se mantenga
+  const handleTelefonoChange = (e) => {
+    const prefijo = getPrefijoActual();
+    const inputVal = e.target.value;
+
+    let resto = "";
+    if (inputVal.startsWith(prefijo)) {
+      resto = inputVal.slice(prefijo.length);
+    } else {
+      const prefijoTrim = prefijo.trim();
+      let limpio = inputVal;
+      if (limpio.startsWith(prefijoTrim)) {
+        limpio = limpio.slice(prefijoTrim.length);
+      } else {
+        limpio = limpio.replace(/^\+\d{1,4}\s*/, "");
+      }
+      resto = limpio;
+    }
+
+    // Permitir únicamente dígitos, espacios y guiones en el número
+    const restoLimpio = resto.replace(/[^\d\s-]/g, "").slice(0, 16);
+
+    setForm((prev) => ({
+      ...prev,
+      telefono: prefijo + restoLimpio,
+    }));
+  };
+
+  // Actualiza los demás campos (nombre, correo, mensaje)
   const handleChange = (e) => {
     const { name, value } = e.target;
     const limpiar = LIMPIADORES[name] || ((t) => t);
@@ -286,7 +438,7 @@ function ContactForm() {
     setMensajeEstado({ texto: "", tipo: "" });
 
     // Endpoint de Formspree: servicio externo que recibe el formulario y lo reenvía por correo
-    const formspreeEndpoint = "https://formspree.io/f/mvkpzygv"; 
+    const formspreeEndpoint = "https://formspree.io/f/mdeenrwz"; 
 
     try {
       const respuesta = await fetch(formspreeEndpoint, {
@@ -298,7 +450,8 @@ function ContactForm() {
         body: JSON.stringify({
           Nombre: form.nombre.trim(),
           Email: form.correo.trim(),
-          Telefono: form.telefono,
+          Pais: paisSeleccionado || "No especificado",
+          Telefono: form.telefono.trim(),
           Mensaje: form.descripcion.trim(),
         }),
       });
@@ -308,8 +461,13 @@ function ContactForm() {
           texto: "¡Tu mensaje ha sido enviado! Te responderemos muy pronto.",
           tipo: "success",
         });
-        // Limpia el formulario tras un envío exitoso
-        setForm({ nombre: "", correo: "", telefono: "", descripcion: "" });
+        // Restablece el formulario tras envío exitoso
+        setForm({
+          nombre: cliente ? `${cliente.name || ""} ${cliente.lastName || ""}`.trim() : "",
+          correo: cliente ? cliente.email || "" : "",
+          telefono: paisSeleccionado ? `${PAISES.find((p) => p.nombre === paisSeleccionado)?.codigo || "+503"} ` : "",
+          descripcion: "",
+        });
         setTocados({});
       } else {
         throw new Error("Error en la respuesta del servidor");
@@ -360,38 +518,61 @@ function ContactForm() {
           {errorDe("nombre") && <p style={styles.errorTexto}>{errorDe("nombre")}</p>}
         </div>
 
-        {/* Teléfono y Correo en la misma fila */}
+        {/* Correo */}
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Correo</label>
+          <input
+            type="email"
+            style={{ ...styles.input, ...(errorDe("correo") ? styles.inputError : {}) }}
+            name="correo"
+            placeholder="alexi8ye@gmail.com"
+            value={form.correo}
+            onChange={handleChange}
+            onBlur={() => tocar("correo")}
+            maxLength={MAX_CORREO}
+            autoComplete="email"
+          />
+          {errorDe("correo") && <p style={styles.errorTexto}>{errorDe("correo")}</p>}
+        </div>
+
+        {/* Fila: País y Teléfono lado a lado */}
         <div style={styles.inputRow}>
+          {/* País */}
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>País</label>
+            <select
+              style={styles.select}
+              value={paisSeleccionado}
+              onChange={handlePaisChange}
+            >
+              <option value="">Selecciona tu país</option>
+              {PAISES.map((p) => (
+                <option key={p.nombre} value={p.nombre}>
+                  {p.bandera} {p.nombre} ({p.codigo})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Teléfono */}
           <div style={styles.inputGroup}>
             <label style={styles.label}>Teléfono</label>
             <input
               type="tel"
-              inputMode="numeric"
+              inputMode="tel"
               style={{ ...styles.input, ...(errorDe("telefono") ? styles.inputError : {}) }}
               name="telefono"
-              placeholder="00000000"
+              placeholder="+503 7687-0984"
               value={form.telefono}
-              onChange={handleChange}
+              onChange={handleTelefonoChange}
+              onKeyDown={handleTelefonoKeyDown}
+              onClick={handleTelefonoFocusOrClick}
+              onFocus={handleTelefonoFocusOrClick}
               onBlur={() => tocar("telefono")}
-              maxLength={TELEFONO_DIGITOS}
+              maxLength={25}
               autoComplete="tel"
             />
             {errorDe("telefono") && <p style={styles.errorTexto}>{errorDe("telefono")}</p>}
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Correo</label>
-            <input
-              type="email"
-              style={{ ...styles.input, ...(errorDe("correo") ? styles.inputError : {}) }}
-              name="correo"
-              placeholder="alexi8ye@gmail.com"
-              value={form.correo}
-              onChange={handleChange}
-              onBlur={() => tocar("correo")}
-              maxLength={MAX_CORREO}
-              autoComplete="email"
-            />
-            {errorDe("correo") && <p style={styles.errorTexto}>{errorDe("correo")}</p>}
           </div>
         </div>
 

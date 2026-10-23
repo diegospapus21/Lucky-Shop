@@ -67,6 +67,7 @@ loginClientesController.login = async (req, res) => {
       email: clienteFound.email,
       name: clienteFound.name,
       lastName: clienteFound.lastName,
+      phone: clienteFound.phone || "",
     };
 
     // La web usa solo la cookie httpOnly (el token NO se le entrega al JavaScript).
@@ -101,7 +102,7 @@ loginClientesController.checkSession = async (req, res) => {
 
     const clienteFound = await cleintesModel
       .findById(decoded.id)
-      .select("email name lastName profileImage ultimoAcceso");
+      .select("email name lastName phone profileImage ultimoAcceso");
 
     if (!clienteFound) {
       return res.status(401).json({ message: "No autenticado" });
@@ -127,6 +128,7 @@ loginClientesController.checkSession = async (req, res) => {
         email: clienteFound.email,
         name: clienteFound.name,
         lastName: clienteFound.lastName,
+        phone: clienteFound.phone || "",
         profileImage: clienteFound.profileImage || "",
       },
     });

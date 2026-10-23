@@ -28,6 +28,11 @@ const videosComboSchema = new Schema(
       type: Boolean,
       default: null,
     },
+    enProcesoEnvio: {
+      // true = pedido en proceso de envío
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

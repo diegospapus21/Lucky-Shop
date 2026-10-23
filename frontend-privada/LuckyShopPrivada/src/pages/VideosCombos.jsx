@@ -103,8 +103,8 @@ const VideoModal = ({ combo, onClose }) => {
   )
 }
 
-/* Modal: detalles del combo (solo lectura; el cliente es quien acepta o rechaza el video) */
-const DetalleModal = ({ combo, onClose }) => {
+/* Modal: detalles del combo (el cliente acepta/rechaza, la admin marca el envío) */
+const DetalleModal = ({ combo, onClose, onMarcarEnvio, marcandoEnvio }) => {
   if (!combo) return null
   const { label, clase } = getStatusInfo(combo.status)
 
@@ -121,6 +121,11 @@ const DetalleModal = ({ combo, onClose }) => {
         <div className="vc-detalle-row">
           <div className="vc-detalle-label">Fecha</div>
           <div className="vc-detalle-val">{formatFecha(combo.createdAt)}</div>
+          {combo.status === true && combo.enProcesoEnvio && (
+            <div style={{ color: '#059669', fontSize: '0.88rem', fontWeight: 600, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              Su pedido ya se está enviando
+            </div>
+          )}
         </div>
         <div className="vc-detalle-row">
           <div className="vc-detalle-label">Estado actual</div>
@@ -131,6 +136,39 @@ const DetalleModal = ({ combo, onClose }) => {
             </span>
           </div>
         </div>
+
+        {/* Botón para marcar proceso de envío abajo del estado donde dice aceptado */}
+        {combo.status === true && (
+          <div className="vc-detalle-row" style={{ marginTop: '16px' }}>
+            <button
+              type="button"
+              onClick={() => onMarcarEnvio && onMarcarEnvio(combo._id, !combo.enProcesoEnvio)}
+              disabled={marcandoEnvio}
+              style={{
+                width: '100%',
+                padding: '11px 16px',
+                borderRadius: '8px',
+                border: combo.enProcesoEnvio ? '1.5px solid #10b981' : '1.5px solid #0f1f14',
+                background: combo.enProcesoEnvio ? '#ecfdf5' : '#0f1f14',
+                color: combo.enProcesoEnvio ? '#065f46' : '#ffffff',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                cursor: marcandoEnvio ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+              }}
+            >  
+              {marcandoEnvio
+                ? 'Actualizando...'
+                : combo.enProcesoEnvio
+                ? '✓ En proceso de envío (Clic para desmarcar)'
+                : 'Marcar proceso de envío'}
+            </button>
+          </div>
+        )}
 
         <div className="vc-detalle-actions">
           <button className="vc-btn-cerrar" onClick={onClose}>Cerrar</button>
@@ -462,6 +500,7 @@ const VideosCombos = () => {
     fetchCombos,
     crearCombo,
     eliminarCombo,
+    marcarEnvio,
   } = useVideosCombos()
 
   const [notifAbierta, setNotifAbierta] = useState(false)
@@ -469,6 +508,22 @@ const VideosCombos = () => {
   const [modalDetalle, setModalDetalle] = useState(null)
   const [modalEliminar, setModalEliminar] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
+  const [marcandoEnvio, setMarcandoEnvio] = useState(false)
+
+  /* Acciones CRUD y Envío */
+  const handleMarcarEnvio = async (id, enProcesoEnvio) => {
+    setMarcandoEnvio(true)
+    try {
+      const comboActualizado = await marcarEnvio(id, enProcesoEnvio)
+      if (modalDetalle && modalDetalle._id === id) {
+        setModalDetalle(comboActualizado)
+      }
+    } catch (err) {
+      alert('Error: ' + err.message)
+    } finally {
+      setMarcandoEnvio(false)
+    }
+  }
 
   /* Acciones CRUD */
   const handleEliminar = async () => {
@@ -595,6 +650,11 @@ const VideosCombos = () => {
                     <div className="vc-meta">
                       <span><strong>Cliente:</strong> {nombreCliente}</span>
                       <span><strong>Fecha:</strong> {formatFecha(combo.createdAt)}</span>
+                      {combo.status === true && combo.enProcesoEnvio && (
+                        <span style={{ color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                           Su pedido ya se está enviando
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -638,6 +698,8 @@ const VideosCombos = () => {
         <DetalleModal
           combo={modalDetalle}
           onClose={() => setModalDetalle(null)}
+          onMarcarEnvio={handleMarcarEnvio}
+          marcandoEnvio={marcandoEnvio}
         />
       )}
 
